@@ -27,7 +27,6 @@ x = x0;
 % Get number of components of x,d, row/cols of A.
 n = length(x);
 
-
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Outer loop: Repeat until converged or max # of iterations reached.
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -37,8 +36,10 @@ for k = 0:maxits
     % Check for convergence.
     %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     
+   
     % Compute gradient of differentiable part (f(x) = 0.5*x'*A*x - d'*x)
     df = A*x - d;
+    
     
     %----------------------------------------------------------------
     % Compute disagreement between df and lam*sign(x) on supp(x).
@@ -73,13 +74,18 @@ for k = 0:maxits
     %----------------------------------------------------------------
     if max(norm(df, inf) - lam, norm(err, inf)) < tol*n
         % CONVERGED!!!
-        %fprintf('Subproblem converged after %g iterations\n\n\n', k);
+%         fprintf('Subproblem converged after %g iterations\n', k);
+        
+   
+        
         break
-    else
+    else % Update x using prox gradient.        
         % Update x using soft-thresholding.
-        x = sign(x - alpha*df).*max(abs(x - alpha*df) - lam*alpha*ones(n,1), zeros(n,1));
+        x = sign(x - alpha*df).*max(abs(x - alpha*df) - lam*alpha*ones(n,1), zeros(n,1));              
+        
+        
+        
     end
-    
     
     
     
