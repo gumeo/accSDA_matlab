@@ -35,15 +35,6 @@ p = length(x);
 z = zeros(p,1);
 [n,~] = size(V);
 
-if quiet==0
-    display('---------------------------------------------------------------')    
-%     xb = (R'*R - mu*eye(p))\d;    
-%     lam_max = (d'*xb - 0.5*(R*xb)'*(R*xb));
-%     fprintf('lam_max %g || l1 %g || Ratio %g\n', lam_max, norm(xb,1)/norm(xb), lam_max*norm(xb)/norm(xb,1));
-%     x = xb;
-%     y = xb;
-%     display('---------------------------------------------------------------')
-end
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Outer loop: Repeat until converged or max # of iterations reached.
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -68,6 +59,7 @@ for k = 0:maxits
     yold = y;
     tmp = x + z/mu;
     y = sign(tmp).*max(abs(tmp) - lam*ones(p,1), zeros(p,1));
+    
     
     %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     % Update z.
@@ -99,17 +91,19 @@ for k = 0:maxits
     ep = sqrt(p)*tol.abs + tol.rel*max(norm(x), norm(y));
     es = sqrt(p)*tol.abs + tol.rel*norm(y);
     
+    
     % Display current iteration stats.
-    if (quiet==0)
-        fprintf('it = %g, primal_viol = %3.2e, dual_viol = %3.2e, norm_y = %3.2e\n', k, dr-ep, ds-es, max(norm(x), norm(y)))
+    if (quiet==0 && mod(k,5) ==0)
+        fprintf('it = %g, primal_viol = %3.2e | %3.2e , dual_viol = %3.2e | %3.2e, norm_y = %3.2e\n', k, dr, ep, ds, es, max(norm(x), norm(y)))
     end
+    
     
     % Check if the residual norms are less than the given tolerance.
     if (dr < ep && ds < es)
+        % CONVERGED.
+%         fprintf('Subproblem converged after %g iterations\n', k);
+
         break % The algorithm has converged.
     end
 end
 
-if quiet==0
-    display('---------------------------------------------------------------')
-end

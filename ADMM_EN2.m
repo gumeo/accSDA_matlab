@@ -33,15 +33,6 @@ p = length(x);
 z = zeros(p,1);
 
 
-if quiet==0
-    display('---------------------------------------------------------------')    
-%     xb = (R'*R - mu*eye(p))\d;    
-%     lam_max = (d'*xb - 0.5*(R*xb)'*(R*xb));
-%     fprintf('lam_max %g || l1 %g || Ratio %g\n', lam_max, norm(xb,1)/norm(xb), lam_max*norm(xb)/norm(xb,1));
-%     x = xb;
-%     y = xb;
-%     display('---------------------------------------------------------------')
-end
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Outer loop: Repeat until converged or max # of iterations reached.
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -104,8 +95,4 @@ for k = 0:maxits
     if (dr < ep && ds < es)
         break % The algorithm has converged.
     end
-end
-
-if quiet==0
-    display('---------------------------------------------------------------')
 end
