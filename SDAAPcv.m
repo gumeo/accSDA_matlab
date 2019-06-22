@@ -1,4 +1,4 @@
-function [B, Q, lbest, lambest] = SDAAPcv(train, folds, Om, gam, lams, q, PGsteps, PGtol, maxits, tol, feat, quiet)
+function [B, Q, lbest, lambest,scores] = SDAAPcv(train, folds, Om, gam, lams, q, PGsteps, PGtol, maxits, tol, feat, quiet)
 
 % Applies accelerated proximal gradient algorithm with cross validation
 % to the optimal scoring formulation of
@@ -32,6 +32,7 @@ function [B, Q, lbest, lambest] = SDAAPcv(train, folds, Om, gam, lams, q, PGstep
 X = train.X;
 Y = train.Y;
 
+
 % Get dimensions of input matrices.
 [n, p] = size(X);
 [~, K] = size(Y);
@@ -46,19 +47,25 @@ if mod(n,folds) > 0
     % duplicate elements of X and Y.
     X = [X; X(1:pad, :)];
     Y = [Y; Y(1:pad, :)];
+
 end
 
 % Get new size of X.
 [n, ~] = size(X);
 
 % Randomly permute rows of X.
+
 prm = randperm(n);
 X = X(prm, :);
 Y = Y(prm, :);
 
-% Sort lambdas in descending order (break ties by using largest lambda =
+% Extract class labels.
+[~, labs] = max(Y, [],2 );
+% [~, labs] = max(Y'); labs = labs';
+
+% Sort lambdas in ascending order (break ties by using largest lambda =
 % sparsest vector).
-lams = sort(lams, 'descend');
+lams = sort(lams, 'ascend');
 
 
 %% Initialize cross-validation indices.
@@ -83,18 +90,20 @@ mc = zeros(folds, nlam);
 
 
 
+
 for f = 1 : folds
 
     %% Initialization.
-
-
+    
     % Extract X and Y from train.
     Xt = X(tinds, :);
+    [Xt, mut, sigt] = normalize(Xt);
     Yt = Y(tinds, :);
 
     % Extract training data.
     Xv = X(vinds, :);
-    Yv = Y(vinds, :);
+    Xv = normalize_test(Xv, mut, sigt);
+%     Yv = Y(vinds, :);
     % Get dimensions of training matrices.
     [nt, p] = size(Xt);
 
@@ -105,7 +114,7 @@ for f = 1 : folds
     % Precompute repeatedly used matrix products
     %display('form EN coefficient matrix')
     %gamOm = gam*Om;
-    tic
+
     if norm(diag(diag(Om)) - Om, 'fro') < 1e-15 % Omega is diagonal.
         A.flag = 1;
         % Store components of A.
@@ -123,19 +132,11 @@ for f = 1 : folds
         A.A = 2*(Xt'*Xt/nt + gam*Om); % Elastic net coefficient matrix.
         alpha = 1/norm(A.A, 'fro');
     end
-    %Atime = toc;
-    %fprintf('Coefficient time %g\n', Atime);
-    %tic
-    %alpha = 1/norm(A.A); % Step length in PGA.
+    
     D = 1/nt*(Yt'*Yt); %D
-    %XY = X'*Y; % X'Y.
-    %other =toc;
-    %fprintf('Other preprocessing %g\n', other);
-    %tic;
+    
     R = chol(D);
-    %Rtime = toc;
-    %fprintf('Chol time %g\n', Rtime);
-
+    
 
     %% Validation Loop.
 
@@ -144,14 +145,19 @@ for f = 1 : folds
         fprintf('Fold %d \n', f)
         fprintf('++++++++++++++++++++++++++++++++++++\n')
     end
+    
+    % Initialize B and Q.
+    %Q = ones(K,q, nlam);
+    B = zeros(p, q, nlam);
+    
     %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     % Loop through potential regularization parameters.
     %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     for ll = 1:nlam
 
-        % Initialize B and Q.
+%         % Initialize B and Q.
         Q = ones(K,q);
-        B = zeros(p, q);
+%         B = zeros(p, q);
 
         %%
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -176,7 +182,37 @@ for f = 1 : folds
             theta = theta/sqrt(theta'*D*theta);
 
             % Initialize beta.
-            beta = zeros(p,1);
+            if (ll==1) % First lam.                
+                if norm(diag(diag(Om)) - Om, 'fro') < 1e-15 % Use diagonal initializer.
+                    % Extract reciprocal of diagonal of Omega.
+                    ominv = 1./diag(Om);
+                    
+                    % Compute rhs of f minimizer system.
+                    rhs0 = Xt'*(Yt*(theta/nt));
+                    rhs = Xt*((ominv/n).*rhs0);
+                    
+                    % Compute partial solution.
+%                     size(Xt)
+%                     nt
+%                     size(eye(nt))
+%                     size((Xt*((ominv/(gam*n)).*Xt')))
+%                     size(rhs)
+%                     
+                    tmp = (eye(nt) + Xt*((ominv/(gam*nt)).*Xt'))\rhs;
+                    
+                    % Finishing solving for beta using SMW.
+                    beta = (ominv/gam).*rhs0 - 1/gam^2*ominv.*(Xt'*tmp);
+                    
+                else
+                    % Initialize with all-zeros beta.
+                    beta = zeros(p,1);
+                end
+%                 beta = zeros(p,1);
+            else %  Warm-start with previous lambda.
+                beta = B(:, j, ll-1);
+            end
+            fprintf('norm b0: %1.3d \n', norm(beta))
+            fprintf('l0 b0: %d \n', nnz(beta))
 
             %+++++++++++++++++++++++++++++++++++++++++++++++++++++
             % Alternating direction method to update (theta, beta)
@@ -191,7 +227,7 @@ for f = 1 : folds
                 b_old = beta;
                 %tic
                 [beta, ~] = APG_EN2(A, d, beta, lams(ll), alpha, PGsteps, PGtol);
-                %update_time = toc;
+                
 
                 % Update theta using the projected solution.
                 % theta = Mj*D^{-1}*Y'*X*beta.
@@ -227,59 +263,44 @@ for f = 1 : folds
 
             % Update Q and B.
             Q(:,j) = theta;
-            B(:,j) = beta;
+            B(:,j, ll) = beta;
         end
 
         %%
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         % Get classification statistics for (Q,B).
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-        % Project validation data.
-        PXtest = Xv*B(:,:);
-        % Project centroids.
-        PC = C*B(:,:);
-
-        % Compute distances to the centroid for each projected test observation.
-        dist = zeros(nv, K);
-        for i = 1:nv
-            for j = 1:K
-                dist(i,j) = norm(PXtest(i,:) - PC(j,:));
-            end
-        end
-
-
-        % Label test observation according to the closest centroid to its projection.
-        [~,predicted_labels] = min(dist, [], 2);
-
-        % Form predicted Y.
-        Ypred = zeros(nv, K);
-        for i=1:nv
-            Ypred(i, predicted_labels(i)) = 1;
-        end
-
-        % Fraction misclassified.
-        mc(f, ll) = (1/2*norm(Yv - Ypred, 'fro')^2)/nv;
-
+        
+        
+        % Get prediction/scores.
+        stats = predict(B(:,:,ll), [labs(vinds), Xv], C');
+        mc(f, ll) = stats.mc;
+        
+        
         %%
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         % Validation scores.
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         %nnz(B)
-        if 1<= nnz(B) && nnz(B) <= q*p*feat % if fraction nonzero features less than feat.
+        if  (1<= stats.l0) && (stats.l0 <= q*p*feat) 
+        
+%         if  (1<= stats.l0 <= q*p*feat)% if fraction nonzero features less than feat.
+            fprintf('Sparse enough. Use MC as score. \n')
             % Use misclassification rate as validation score.
             scores(f, ll) = mc(f, ll);
-%         elseif nnz(B) < 0.5; % Found trivial solution.
-%             %fprintf('dq \n')
-%             scores(f, 11) = 10000; % Disqualify with maximum possible score.
-        elseif nnz(B) > q*p*feat % Solution is not sparse enough, use most sparse as measure of quality instead.
-            scores(f, ll) = nnz(B);
+            %         elseif nnz(B) < 0.5; % Found trivial solution.
+            %             %fprintf('dq \n')
+            %             scores(f, 11) = 10000; % Disqualify with maximum possible score.
+        elseif (stats.l0 > q*p*feat) % Solution is not sparse enough, use most sparse as measure of quality instead.
+            fprintf('Not sparse enough. Use cardinality as score. \n')
+            
+            scores(f, ll) = stats.l0;
         end
 
 
         % Display iteration stats.
         if (quiet ==0)
-            fprintf('f: %3d | ll: %3d | lam: %1.5e| feat: %1.5e | mc: %1.5e | score: %1.5e \n', f,  ll, lams(ll), nnz(B(:,:))/((K-1)*p), mc(f, ll), scores(f, ll))
+            fprintf('ll: %3d | lam: %1.5e| feat: %d | mc: %1.5e | score: %1.5e \n',  ll, lams(ll), stats.l0, mc(f, ll), scores(f, ll))
         end
 
 
@@ -304,8 +325,16 @@ end % folds.
 % average CV scores.
 avg_score = mean(scores);
 
-% choose lambda with best average score.
-[~, lbest] = min(avg_score);
+% choose lambda with best average score (break ties by taking largest ->
+% most sparse discriminant vector).
+
+% minidx = find(avg_score == minscore);
+% lbest = max(minidx);
+minscore = min(avg_score);
+lbest = find(avg_score == minscore, 1, 'last');
+
+% [~, lbest] = min(avg_score);
+
 
 lambest = lams(lbest);
 
@@ -313,7 +342,8 @@ lambest = lams(lbest);
 %% Solve with lambda = lam(lbest).
 
 % Use full training set.
-Xt = X;
-Yt = Y;
+Xt = X(1:(n-pad), :);
+Xt = normalize(Xt);
+Yt = Y(1:(n-pad), :);
 
 [B,Q] = SDAAP(Xt, Yt, Om, gam, lams(lbest), q, PGsteps, PGtol, maxits, tol);

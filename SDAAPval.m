@@ -1,4 +1,4 @@
-function [B, Q, best_ind] = SDAAP_val(train, val, Om, gam, lams, q, PGsteps, PGtol, maxits, tol, feat)
+function [B, Q, best_ind, scores] = SDAAPval(train, val, Om, gam, lams, q, PGsteps, PGtol, maxits, tol, feat, quiet)
 
 % Applies accelerated proximal gradient algorithm with validation
 % to the optimal scoring formulation of
@@ -27,9 +27,15 @@ function [B, Q, best_ind] = SDAAP_val(train, val, Om, gam, lams, q, PGsteps, PGt
 
 %% Initialization.
 
+% Sort lambdas in ascending order (break ties by using largest lambda =
+% sparsest vector).
+lams = sort(lams, 'ascend');
+
 % Extract X and Y from train.
 X = train.X;
+[X, mut, sigt] = normalize(X);
 Y = train.Y;
+% [~, labs] = max(Y, [],2 );
 
 % Get dimensions of input matrices.
 [n, p] = size(X);
@@ -39,13 +45,13 @@ Y = train.Y;
 C = diag(1./diag(Y'*Y))*Y'*X;
 
 % Number of validation observations.
-[nval,~] = size(val.X);
+Xv = val.X;
+Xv = normalize_test(Xv, mut, sigt);
+[~, vlabs] = max(val.Y, [],2 );
+% [nval,~] = size(val.X);
 
 
 % Precompute repeatedly used matrix products
-%display('form EN coefficient matrix')
-%gamOm = gam*Om;
-tic
 if norm(diag(diag(Om)) - Om, 'fro') < 1e-15 % Omega is diagonal.
     A.flag = 1;
     % Store components of A.
@@ -63,18 +69,9 @@ else
     A.A = 2*(X'*X/n + gam*Om); % Elastic net coefficient matrix.
     alpha = 1/norm(A.A, 'fro');
 end
-%Atime = toc;
-%fprintf('Coefficient time %g\n', Atime);
-%tic
-%alpha = 1/norm(A.A); % Step length in PGA.
-D = 1/n*(Y'*Y); %D 
-%XY = X'*Y; % X'Y.
-%other =toc;
-%fprintf('Other preprocessing %g\n', other);
-%tic;
+
+D = 1/n*(Y'*Y); %D
 R = chol(D);
-%Rtime = toc;
-%fprintf('Chol time %g\n', Rtime);
 
 
 %% Validation Loop.
@@ -83,7 +80,7 @@ R = chol(D);
 nlam = length(lams);
 
 % Initialize validation scores.
-val_scores = zeros(nlam, 1);
+scores = zeros(nlam, 1);
 
 % Position of best solution.
 best_ind = 1;
@@ -124,7 +121,29 @@ for ll = 1:nlam
         theta = theta/sqrt(theta'*D*theta);
         
         % Initialize beta.
-        beta = zeros(p,1);        
+            if (ll==1) % First lam.                
+                if norm(diag(diag(Om)) - Om, 'fro') < 1e-15 % Use diagonal initializer.
+                    % Extract reciprocal of diagonal of Omega.
+                    ominv = 1./diag(Om);
+                    
+                    % Compute rhs of f minimizer system.
+                    rhs0 = X'*(Y*(theta/n));
+                    rhs = X*((ominv/n).*rhs0);
+                    
+                    % Compute partial solution.
+                    tmp = (eye(n) + X*((ominv/(gam*n)).*X'))\rhs;
+                    
+                    % Finishing solving for beta using SMW.
+                    beta = (ominv/gam).*rhs0 - 1/gam^2*ominv.*(X'*tmp);
+                    
+                else
+                    % Initialize with all-zeros beta.
+                    beta = zeros(p,1);
+                end
+
+            else %  Warm-start with previous lambda.
+                beta = B(:, j, ll-1);
+            end     
         
         %+++++++++++++++++++++++++++++++++++++++++++++++++++++
         % Alternating direction method to update (theta, beta)
@@ -137,9 +156,8 @@ for ll = 1:nlam
             
             % Update beta using proximal gradient step.
             b_old = beta;
-            %tic
             [beta, ~] = APG_EN2(A, d, beta, lams(ll), alpha, PGsteps, PGtol);
-            %update_time = toc;
+
             
             % Update theta using the projected solution.
             % theta = Mj*D^{-1}*Y'*X*beta.
@@ -173,54 +191,32 @@ for ll = 1:nlam
     % Get classification statistics for (Q,B).
     %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     
-    % Project validation data.
-    % Project test data.
-    PXtest = val.X*B(:,:, ll);
-    % Project centroids.
-    PC = C*B(:,:, ll);
-    
-    % Compute distances to the centroid for each projected test observation.
-    dist = zeros(nval, K);
-    for i = 1:nval
-        for j = 1:K
-            dist(i,j) = norm(PXtest(i,:) - PC(j,:));
-        end
-    end
-    
-    
-    % Label test observation according to the closest centroid to its projection.
-    [~,predicted_labels] = min(dist, [], 2);
-    
-    % Form predicted Y.
-    Ypred = zeros(nval, K);
-    for i=1:nval
-        Ypred(i, predicted_labels(i)) = 1;
-    end
-    
-    % Fraction misclassified.
-    mc(ll) = (1/2*norm(val.Y - Ypred, 'fro')^2)/nval;  
-    
-    %%
-    %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    % Validation scores.
-    %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    
-    if nnz(B(:,:, ll)) <= (K-1)*p*feat % if fraction nonzero features less than feat.
+    % Get prediction/scores.
+    stats = predict(B(:,:,ll), [vlabs, Xv], C');
+    mc(ll) = stats.mc;    
+     
+    if (1<= stats.l0) && (stats.l0 <= q*p*feat)        
+        
+        fprintf('Sparse enough. Use MC as score. \n')
         % Use misclassification rate as validation score.
-        val_scores(ll) = mc(ll);
-    else % Solution is not sparse enough, use most sparse as measure of quality instead.
-        val_scores(ll) = nnz(B(:,:, ll));
-    end
+        scores(ll) = mc(ll);
+
+    elseif (stats.l0 > q*p*feat) % Solution is not sparse enough, use most sparse as measure of quality instead.
+        fprintf('Not sparse enough. Use cardinality as score. \n')
+        
+        scores(ll) = stats.l0;
+    end    
     
+        
     % Update best so far.
-    if (val_scores(ll) <= val_scores(best_ind))
+    if (scores(ll) <= scores(best_ind))
         best_ind = ll;
     end
     
     % Display iteration stats.
-    %if (quiet ==0)
-        fprintf('ll: %d | lam: %1.5e| feat: %1.5e | mc: %1.5e | score: %1.5e | best: %d\n', ll, lams(ll), nnz(B(:,:,ll))/((K-1)*p), mc(ll),val_scores(ll), best_ind)
-    %end
+    if (quiet ==0)
+        fprintf('ll: %d | lam: %1.2e| feat: %d | mc: %1.2e | score: %1.2e | best: %d\n', ll, lams(ll), nnz(B(:,:,ll)), mc(ll),scores(ll), best_ind)
+    end
     
     
     
@@ -230,7 +226,10 @@ for ll = 1:nlam
     
 end % For ll = 1:nlam.
 
+% Output best solution when finished.
+B = B(:, :, best_ind);
+Q = Q(:, :,  best_ind);
+
 end % Function.
 
-    
-    
+

@@ -1,4 +1,4 @@
-function [B, Q, lbest, lambest] = SDADcv(train, folds, Om, gam, lams, mu, q, PGsteps, PGtol, maxits, tol, feat, quiet)
+function [B, Q, lbest, lambest,scores] = SDADcv(train, folds, Om, gam, lams, mu, q, PGsteps, PGtol, maxits, tol, feat, quiet)
 
 % Applies alternating direction method of multipliers with cross validation
 % to the optimal scoring formulation of
@@ -39,7 +39,7 @@ Y = train.Y;
 
 % If n is not divisible by K, duplicate some records for the sake of
 % cross validation.
-pad = 0; % Initialize number of padding observations.
+% Initialize number of padding observations.
 if mod(n,folds) > 0
     % number of elements to duplicate.
     pad = ceil(n/folds)*folds - n;
@@ -57,9 +57,12 @@ prm = randperm(n);
 X = X(prm, :);
 Y = Y(prm, :);
 
-% Sort lambdas in descending order (break ties by using largest lambda =
+% Extract class labels.
+[~, labs] = max(Y, [],2 );
+
+% Sort lambdas in ascending order (break ties by using largest lambda =
 % sparsest vector).
-lams = sort(lams, 'descend');
+lams = sort(lams, 'ascend');
 
 
 %% Initialize cross-validation indices.
@@ -88,10 +91,13 @@ for f = 1 : folds
     % Extract X and Y from train.
     Xt = X(tinds, :);
     Yt = Y(tinds, :);
+    [Xt, mut, sigt] = normalize(Xt);
 
     % Extract training data.
     Xv = X(vinds, :);
-    Yv = Y(vinds, :);
+%     Yv = Y(vinds, :);
+    Xv = normalize_test(Xv, mut, sigt);
+    
     % Get dimensions of training matrices.
     [nt, p] = size(Xt);
 
@@ -105,36 +111,28 @@ for f = 1 : folds
 
         % Flag to use Sherman-Morrison-Woodbury to translate to
         % smaller dimensional linear system solves.
-        %display('Using SMW')
         SMW = 1;
 
         % Easy to invert diagonal part of Elastic net coefficient matrix.
-        M = mu*eye(p) + 2*gam*Om;
-        %fprintf('min M: %g\n', min(diag(M)))
-        Minv = 1./diag(M);
-        %fprintf('Minv err: %g\n', norm(diag(Minv) - inv(M)))
-        %fprintf('max Minv: %g\n', max(Minv))
+        M = mu + 2*gam*diag(Om); 
+        Minv = 1./M;
 
         % Cholesky factorization for smaller linear system.
-        %min(diag(M))
-        RS = chol(eye(nt) + 2*Xt*diag(Minv)*Xt'/nt);
-        %fprintf('Chol norm: %g\n', norm(RS, 'fro'))
-
-        % Coefficient matrix (Minv*X) = V*A^{-1} = (A^{-1}U)' in SMW.
-        %XM = X*Minv;
+        RS = chol(eye(nt) + 2*Xt*((Minv/nt).*Xt') );
+   
 
     else % Use Cholesky for solving linear systems in ADMM step.
 
         % Flag to not use SMW.
         SMW = 0;
-        A = mu*eye(p) + 2*(Xt'*Xt + gam*Om); % Elastic net coefficient matrix.
+        A = mu*eye(p) + 2*(Xt'*Xt/nt + gam*Om); % Elastic net coefficient matrix.
         R2 = chol(A); % Cholesky factorization of mu*I + A.
     end
 
     %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     % Matrices for theta update.
     %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    D = 1/n*(Yt'*Yt); %D
+    D = 1/nt*(Yt'*Yt); %D
     %M = X'*Y; % X'Y.
     R = chol(D); % Cholesky factorization of D.
 
@@ -148,11 +146,14 @@ for f = 1 : folds
     %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     % Loop through potential regularization parameters.
     %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    
+    % Initialize B.    
+    B = zeros(p, q, nlam);
+    
     for ll = 1:nlam
 
-        % Initialize B and Q.
-        Q = ones(K,q);
-        B = zeros(p, q);
+        % Initialize Q.
+        Q = ones(K,q);        
 
         %%
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -178,7 +179,7 @@ for f = 1 : folds
             theta = theta/sqrt(theta'*D*theta);
 
             % Initialize coefficient vector for elastic net step.
-            d = 2*X'*(Y*theta);
+            d = 2*Xt'*(Yt*(theta/nt));
 
             % Initialize beta.
             if SMW == 1
@@ -239,7 +240,7 @@ for f = 1 : folds
 
             % Update Q and B.
             Q(:,j) = theta;
-            B(:,j) = beta;
+            B(:,j, ll) = beta;
         end %j.
 
         %%
@@ -247,51 +248,31 @@ for f = 1 : folds
         % Get classification statistics for (Q,B).
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-        % Project validation data.
-        PXtest = Xv*B(:,:);
-        % Project centroids.
-        PC = C*B(:,:);
-
-        % Compute distances to the centroid for each projected test observation.
-        dist = zeros(nv, K);
-        for i = 1:nv
-            for j = 1:K
-                dist(i,j) = norm(PXtest(i,:) - PC(j,:));
-            end
-        end
-
-
-        % Label test observation according to the closest centroid to its projection.
-        [~,predicted_labels] = min(dist, [], 2);
-
-        % Form predicted Y.
-        Ypred = zeros(nv, K);
-        for i=1:nv
-            Ypred(i, predicted_labels(i)) = 1;
-        end
-
-        % Fraction misclassified.
-        mc(f, ll) = (1/2*norm(Yv - Ypred, 'fro')^2)/nv;
-
-        %%
-        %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-        % Validation scores.
+        % Get prediction/scores.
+        stats = predict(B(:,:,ll), [labs(vinds), Xv], C');
+        mc(f, ll) = stats.mc;
+        
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-        if 1<= nnz(B) && nnz(B) <= q*p*feat % if fraction nonzero features less than feat.
+        if  (1<= stats.l0) && (stats.l0 <= q*p*feat) 
+        
+%         if  (1<= stats.l0 <= q*p*feat)% if fraction nonzero features less than feat.
+            fprintf('Sparse enough. Use MC as score. \n')
             % Use misclassification rate as validation score.
             scores(f, ll) = mc(f, ll);
-%         elseif nnz(B) < 0.5; % Found trivial solution.
-%             %fprintf('dq \n')
-%             scores(f, 11) = 10000; % Disqualify with maximum possible score.
-        elseif nnz(B) > q*p*feat % Solution is not sparse enough, use most sparse as measure of quality instead.
-            scores(f, ll) = nnz(B);
+            %         elseif nnz(B) < 0.5; % Found trivial solution.
+            %             %fprintf('dq \n')
+            %             scores(f, 11) = 10000; % Disqualify with maximum possible score.
+        elseif (stats.l0 > q*p*feat) % Solution is not sparse enough, use most sparse as measure of quality instead.
+            fprintf('Not sparse enough. Use cardinality as score. \n')
+            
+            scores(f, ll) = stats.l0;
         end
 
 
         % Display iteration stats.
         if (quiet ==0)
-            fprintf('f: %3d | ll: %3d | lam: %1.5e| feat: %1.5e | mc: %1.5e | score: %1.5e \n', f,  ll, lams(ll), nnz(B(:,:))/(q*p), mc(f, ll), scores(f, ll))
+            fprintf('ll: %3d | lam: %1.5e| feat: %d | mc: %1.5e | score: %1.5e \n',  ll, lams(ll), stats.l0, mc(f, ll), scores(f, ll))
         end
 
 
@@ -318,9 +299,10 @@ fprintf('Finished training, choosing lambda.\n')
 % average CV scores.
 avg_score = mean(scores);
 
-% choose lambda with best average score.
-[~, lbest] = min(avg_score);
-
+% choose lambda with best average score (break ties by taking largest ->
+% most sparse discriminant vector).
+minscore = min(avg_score);
+lbest = find(avg_score == minscore, 1, 'last');
 lambest = lams(lbest);
 
 %% Solve with lambda = lam(lbest).
@@ -329,8 +311,10 @@ lambest = lams(lbest);
 % Use full training set.
 Xt = train.X;
 Yt = train.Y;
+Xt = normalize(Xt);
 
 % Solve for B & Q.
-%[B, Q] = SDAD(Xt, Yt, theta0, Om, gam, lambest, mu, q, PGsteps, PGtol, maxits, tol);
-[B, Q] = SDAD(Xt, Yt, Om, gam, lambest, mu, q, PGsteps, PGtol, maxits, tol);
-%[B, Q] = ADMM_SDA2(theta0, Yt, Xt, Om, gam, lambest, mu, q, 5000, PGtol, maxits, tol);
+[B, Q] = SDAD(Xt, Yt, Om, gam, lambest, mu, q, PGsteps, PGtol, maxits, tol, 1);
+
+
+
