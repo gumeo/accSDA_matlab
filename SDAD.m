@@ -1,4 +1,4 @@
-function [B, Q] = SDAD(Xt, Yt, Om, gam, lam, mu, q, PGsteps, PGtol, maxits, tol)
+function [B, Q, subits, totalits] = SDAD(Xt, Yt, Om, gam, lam, mu, q, PGsteps, PGtol, maxits, tol, quiet)
 
 % Applies alternating direction method of multipliers
 % to the optimal scoring formulation of
@@ -23,6 +23,11 @@ function [B, Q] = SDAD(Xt, Yt, Om, gam, lam, mu, q, PGsteps, PGtol, maxits, tol)
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % B: p by q by nlam matrix of discriminant vectors.
 % Q: K by q by nlam matrix of scoring vectors.
+% subits, totalits: number of inner and outer loop iterations.
+
+% Record number of subproblem iterations.
+subits = 0;
+totalits = maxits*ones(q,1);
 
 %% Initialize training sets, etc.
 
@@ -41,25 +46,25 @@ if norm(diag(diag(Om)) - Om, 'fro') < 1e-15
     SMW = 1;
     
     % Easy to invert diagonal part of Elastic net coefficient matrix.
-    M = mu*eye(p) + 2*gam*Om;
-    %fprintf('min M: %g\n', min(diag(M)))
-    Minv = 1./diag(M);
+    M = mu + 2*gam*diag(Om); 
+    Minv = 1./M;
     %fprintf('Minv err: %g\n', norm(diag(Minv) - inv(M)))
     %fprintf('max Minv: %g\n', max(Minv))
     
     % Cholesky factorization for smaller linear system.
     %min(diag(M))
-    RS = chol(eye(nt) + 2*Xt*diag(Minv)*Xt'/nt);
+    RS = chol(eye(nt) + 2*Xt*((Minv/nt).*Xt') );
     %fprintf('Chol norm: %g\n', norm(RS, 'fro'))
     
     % Coefficient matrix (Minv*X) = V*A^{-1} = (A^{-1}U)' in SMW.
     %XM = X*Minv;
+ 
     
 else % Use Cholesky for solving linear systems in ADMM step.
     
     % Flag to not use SMW.
     SMW = 0;
-    A = mu*eye(p) + 2*(Xt'*Xt + gam*Om); % Elastic net coefficient matrix.
+    A = mu*eye(p) + 2*(Xt'*Xt/nt + gam*Om); % Elastic net coefficient matrix.
     R2 = chol(A); % Cholesky factorization of mu*I + A.
 end
 
@@ -98,7 +103,7 @@ for j = 1:q
     theta = theta/sqrt(theta'*D*theta);
     
     % Initialize coefficient vector for elastic net step.
-    d = 2*Xt'*(Yt*theta);
+    d = 2*Xt'*(Yt*theta/nt);
     
     % Initialize beta.
     if SMW == 1
@@ -119,11 +124,13 @@ for j = 1:q
         
         if SMW == 1
             % Use SMW-based ADMM.
-            [~,beta,~,~] = ADMM_EN_SMW(Minv, Xt, RS, d, beta, lam, mu, PGsteps, PGtol, 1);
+            [~,beta,~, steps] = ADMM_EN_SMW(Minv, Xt, RS, d, beta, lam, mu, PGsteps, PGtol, quiet);
         else
             % Use vanilla ADMM.
-            [~, beta,~, ~] = ADMM_EN2(R2, d, beta, lam, mu, PGsteps, PGtol, 1);
+            [~, beta,~, steps] = ADMM_EN2(R2, d, beta, lam, mu, PGsteps, PGtol, 1);
         end
+        subits = subits + steps;
+                
         
         % Update theta using the projected solution.
         % theta = Mj*D^{-1}*Y'*X*beta.
@@ -151,10 +158,9 @@ for j = 1:q
         
         %fprintf('It %5.0f   nb %5.2e   db %5.2e      dt %5.2e      \n', its, norm(beta), db, dt)
         
-        % Check convergence.
-        if max(db, dt) < tol
-            % Converged.
-            %fprintf('Algorithm converged for %g iterations\n', j)
+         % Check convergence.        
+        if max(db, dt) <= tol             % Converged.
+            totalits(j) = its;
             break
         end
     end %its
@@ -164,4 +170,6 @@ for j = 1:q
     B(:,j) = beta;
 end %j.
 
+% Sum iterations.
+totalits = sum(totalits);
 

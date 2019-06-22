@@ -1,17 +1,17 @@
-function [B,Q] = SDAP(Xt, Yt, Om, gam, lam, q, PGsteps, PGtol, maxits, tol)
-% Applies accelerated proximal gradient algorithm 
+function [B,Q, subits, totalits]  = SDAP(Xt, Yt, Om, gam, lam, q, PGsteps, PGtol, maxits, tol)
+% Applies proximal gradien algorithm 
 % to the optimal scoring formulation of
-% sparse discriminant analysis proposed by Clemmensen et al. 2011.
+% sparse discriminan analysis proposed by Clemmensen et al. 2011.
 %
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
+% Input`
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Xt: n by p data matrix.
 % Yt: n by K matrix of indicator variables (Yij = 1 if i in classs j)
 % Om: p by p parameter matrix Omega in generalized elastic net penalty.
 % gam > 0: regularization parameter for elastic net penalty.
 % lam > 0: regularization parameters for l1 penalty.
-% q: desired number of discriminant vectors.
+% q: desired number of discriminan vectors.
 % PGsteps: max its of inner prox-grad algorithm to update beta.
 % PGtol: stopping tolerance for inner APG method.
 % maxits: number of iterations to run alternating direction alg.
@@ -20,8 +20,13 @@ function [B,Q] = SDAP(Xt, Yt, Om, gam, lam, q, PGsteps, PGtol, maxits, tol)
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Output
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% B: p by q by nlam matrix of discriminant vectors.
+% B: p by q by nlam matrix of discriminan vectors.
 % Q: K by q by nlam matrix of scoring vectors.
+% subits, totalits: number of inner and outer loop iterations.
+
+% Record number of subproblem iterations.
+subits = 0;
+totalits = maxits*ones(q,1);
 
 
 % Read training data size.
@@ -29,10 +34,11 @@ function [B,Q] = SDAP(Xt, Yt, Om, gam, lam, q, PGsteps, PGtol, maxits, tol)
 [~, K] = size(Yt);
 
 % Precompute repeatedly used matrix products
-A = (Xt'*Xt + gam*Om); % Elastic net coefficient matrix.
-alpha = 1/norm(A); % Step length in PGA.
+
+A = 2*(Xt'*Xt/n + gam*Om);
+% fprintf('A norm: %d\n', norm(A))% Elastic net coefficien matrix.
+alpha = 1/norm(A, 'fro'); % Step length in PGA.
 D = 1/n*(Yt'*Yt); %D 
-%XY = X'*Y; % X'Y.
 R = chol(D);
 
 % Initialize B and Q.
@@ -59,7 +65,24 @@ for j = 1:q
     theta = theta/sqrt(theta'*D*theta);
     
     % Initialize beta.
-    beta = zeros(p,1);
+    if norm(diag(diag(Om)) - Om, 'fro') < 1e-15 % Use diagonal initializer.
+        % Extract reciprocal of diagonal of Omega.
+        ominv = 1./diag(Om);
+        
+        % Compute rhs of f minimizer system.
+        rhs0 = Xt'*(Yt*(theta/n));
+        rhs = Xt*((ominv/n).*rhs0);
+        
+        % Compute partial solution.
+        tmp = (eye(n) + Xt*((ominv/(gam*n)).*Xt'))\rhs;
+        
+        % Finishing solving for beta using SMW.
+        beta = (ominv/gam).*rhs0 - 1/gam^2*ominv.*(Xt'*tmp);      
+        
+    else
+        % Initialize with all-zeros beta.
+        beta = zeros(p,1);
+    end
     
     
     
@@ -69,15 +92,15 @@ for j = 1:q
     
     for its = 1:maxits
         
-        % Compute coefficient vector for elastic net step.
+        % Compute coefficien vector for elastic net step.
         d = 2*Xt'*(Yt*(theta/n));
         
-        % Update beta using proximal gradient step.
+        % Update beta using proximal gradien step.
         b_old = beta;
-        %tic
-        [beta, ~] = prox_EN(A, d, beta, lam, alpha, PGsteps, PGtol);
-        %update_time = toc;
-        
+
+        [beta, steps] = prox_EN(A, d, beta, lam, alpha, PGsteps, PGtol);
+        subits = subits + steps;
+                
         % Update theta using the projected solution.
         % theta = Mj*D^{-1}*Y'*X*beta.
         b = Yt'*(Xt*beta);
@@ -90,12 +113,11 @@ for j = 1:q
         % Progress.
         db = norm(beta-b_old)/norm(beta);
         dt = norm(theta-t_old)/norm(theta);
-        %fprintf('It %5.0f      db %5.2f      dt %5.2f      Subprob its %5.0f It time %5.2f\n', its, db, dt, subprob_its, update_time)
+        %fprinf('It %5.0f      db %5.2f      dt %5.2f      Subprob its %5.0f It time %5.2f\n', its, db, dt, subprob_its, update_time)
         
-        % Check convergence.
-        if max(db, dt) < tol
-            % Converged.
-            %fprintf('Algorithm converged after %g iterations\n\n', its)
+         % Check convergence.        
+        if max(db, dt) <= tol             % Converged.
+            totalits(j) = its;
             break
         end
     end
@@ -106,3 +128,5 @@ for j = 1:q
 end
     
 
+% Sum iterations.
+totalits = sum(totalits);

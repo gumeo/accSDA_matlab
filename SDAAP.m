@@ -1,4 +1,4 @@
-function [B,Q] = SDAAP(Xt, Yt, Om, gam, lam, q, PGsteps, PGtol, maxits, tol)
+function [B,Q, subits, totalits] = SDAAP(Xt, Yt, Om, gam, lam, q, PGsteps, PGtol, maxits, tol)
 % Applies accelerated proximal gradient algorithm 
 % to the optimal scoring formulation of
 % sparse discriminant analysis proposed by Clemmensen et al. 2011.
@@ -28,10 +28,12 @@ function [B,Q] = SDAAP(Xt, Yt, Om, gam, lam, q, PGsteps, PGtol, maxits, tol)
 [nt, p] = size(Xt);
 [~, K] = size(Yt);
 
+% Record number of subproblem iterations.
+subits = 0;
+totalits = maxits*ones(q,1);
+
+
 % Precompute repeatedly used matrix products
-%display('form EN coefficient matrix')
-%gamOm = gam*Om;
-tic
 if norm(diag(diag(Om)) - Om, 'fro') < 1e-15 % Omega is diagonal.
     A.flag = 1;
     % Store components of A.
@@ -39,29 +41,17 @@ if norm(diag(diag(Om)) - Om, 'fro') < 1e-15 % Omega is diagonal.
     A.X = Xt;
     A.n = nt;
     
+    % Calculate step length as approximate Lipschitz constant.
     alpha = 1/( 2*(norm(Xt,1)*norm(Xt,'inf')/nt + norm(A.gom, 'inf') ));
-    %alpha = 1/( 2*(norm(X)^2/n + norm(A.gom, 'inf') ));
-    %     A.A = 2*(X'*X/n + diag(A.gom));
-    %     fprintf('Test bounds: L = %g, Lt = %g', norm(A.A), 2*(norm(X,1)*norm(X,'inf')/n + norm(gamOm, 'inf') ))
-    %     norm(A.A)
-else
+else % Omegat is not diagonal. Explicitly calculate A. Use frobenius norm for step length.
     A.flag = 0;
     A.A = 2*(Xt'*Xt/nt + gam*Om); % Elastic net coefficient matrix.
     alpha = 1/norm(A.A, 'fro');
 end
-%Atime = toc;
-%fprintf('Coefficient time %g\n', Atime);
-%tic
-%alpha = 1/norm(A.A); % Step length in PGA.
-D = 1/nt*(Yt'*Yt); %D
-%XY = X'*Y; % X'Y.
-%other =toc;
-%fprintf('Other preprocessing %g\n', other);
-%tic;
-R = chol(D);
-%Rtime = toc;
-%fprintf('Chol time %g\n', Rtime);
 
+% Calculate D and Cholesky factor.
+D = 1/nt*(Yt'*Yt); %D
+R = chol(D);
 
 % Initialize B and Q.
 Q = ones(K,q);
@@ -87,7 +77,24 @@ for j = 1:q
     theta = theta/sqrt(theta'*D*theta);
     
     % Initialize beta.
-    beta = zeros(p,1);
+    if norm(diag(diag(Om)) - Om, 'fro') < 1e-15 % Use diagonal initializer.
+        % Extract reciprocal of diagonal of Omega.
+        ominv = 1./diag(Om);
+        
+        % Compute rhs of f minimizer system.
+        rhs0 = Xt'*(Yt*(theta/nt));
+        rhs = Xt*((ominv/nt).*rhs0);
+        
+        % Compute partial solution.
+        tmp = (eye(nt) + Xt*((ominv/(gam*nt)).*Xt'))\rhs;
+        
+        % Finishing solving for beta using SMW.
+        beta = (ominv/gam).*rhs0 - 1/gam^2*ominv.*(Xt'*tmp);      
+        
+    else
+        % Initialize with all-zeros beta.
+        beta = zeros(p,1);
+    end
     
     
     
@@ -98,9 +105,9 @@ for j = 1:q
         
         % Update beta using proximal gradient step.
         b_old = beta;
-        %tic
-        [beta, ~] = APG_EN2(A, d, beta, lam, alpha, PGsteps, PGtol);
-        %update_time = toc;
+        
+        [beta, steps] = APG_EN2(A, d, beta, lam, alpha, PGsteps, PGtol);
+        subits = subits + steps;
         
         % Update theta using the projected solution.
         % theta = Mj*D^{-1}*Y'*X*beta.        
@@ -130,11 +137,9 @@ for j = 1:q
         % Progress.              
         %fprintf('It %5.0f      db %5.2f      dt %5.2f  \n', its, db, dt)
         
-        % Check convergence.
-        
-        if max(db, dt) < tol
-            % Converged.
-            %fprintf('Algorithm converged after %g iterations\n\n', its)
+        % Check convergence.        
+        if max(db, dt) <= tol             % Converged.
+            totalits(j) = its;
             break
         end
     end
@@ -143,4 +148,7 @@ for j = 1:q
     Q(:,j) = theta;
     B(:,j) = beta;
 end
+
+% Sum iterations.
+totalits = sum(totalits);
 
