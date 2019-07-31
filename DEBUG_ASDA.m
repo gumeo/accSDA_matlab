@@ -1,10 +1,21 @@
-X = [rand(4, 6); rand(4,6) + 2; rand(4,6) + 4];
-Y = [ones(4,1), zeros(4,2); zeros(4,1), ones(4,1), zeros(4,1); zeros(4,2), ones(4,1)];
+% % Test on iris data set
+% load fisheriris;
+% X = normalize(meas);
+% 
+% % generate Yt
+% Y = zeros(150,3);
+% Y(1:50,1) = ones(50,1);
+% Y(51:100,2) = ones(50,1);
+% Y(101:150,3) = ones(50,1);
+% 
+% Om = eye(4);
+% gam = 0.001;
+
+% Test on ECG.
+load('ECGdata (normalized).mat')
 
 
 %%
-Om = eye(6);
-gam = 1e-3;
 lam = 1e-2;
 
 cv = false;
@@ -21,5 +32,9 @@ opts.bt = false;
 % opts.eta = 1.25;
 opts.mu = 4;
 
+%% Calculate DVs. 
+[B,Q] = ASDA(X,Y, Om, gam, lam, cv, method, opts);
+plot(B);
+
 %% 
-[B,Q] = ASDA(X,Y, Om, gam, lam, cv, method, opts)
+scatterplot(X*B)
