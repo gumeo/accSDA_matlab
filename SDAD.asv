@@ -176,8 +176,7 @@ for j = 1:q
         if max(db, dt) <= tol             % Converged.
             totalits(j) = its;
             if quiet == false
-                fprintf('Found discriminant vector %d after %d iterations.\n', j, its)
-            end
+            fprintf('Found 
             break
         end
     end %its

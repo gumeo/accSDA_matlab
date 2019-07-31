@@ -100,7 +100,7 @@ if method == "PG"  % Proximal gradient
         % PG, no CV, no BT.
         %+++++++++++++++++++++++++++++++++++
         if opts.bt == false            
-            fprintf('Proximal gradient with constant step size. \n')
+            fprintf('Proximal gradient with constant step size (PG). \n')
             % Call SDAP.
             [B,Q] = SDAP(X,Y, Om, gam, lam, q, insteps, intol, outsteps, outtol, opts.quiet);
         
@@ -108,7 +108,7 @@ if method == "PG"  % Proximal gradient
         % PGB, no CV
         %+++++++++++++++++++++++++++++++++++
         elseif opts.bt == true % PGB, no CV.            
-            fprintf('Proximal gradient with backtracking line search. \n')            
+            fprintf('Proximal gradient with backtracking line search (PGB). \n')            
             
             % Check input.
             if opts.L <=0
@@ -145,7 +145,7 @@ elseif method == "APG" % Use accelerated proximal gradient.
         % APG, no CV, no BT.
         %+++++++++++++++++++++++++++++++++++
         if opts.bt == false            
-            fprintf('Accelerated proximal gradient with constant step size. \n')
+            fprintf('Accelerated proximal gradient with constant step size (APG). \n')
             % Call SDAP.
             [B,Q] = SDAAP(X,Y, Om, gam, lam, q, insteps, intol, outsteps, outtol, opts.quiet);
         
@@ -153,7 +153,7 @@ elseif method == "APG" % Use accelerated proximal gradient.
         % APGB, no CV
         %+++++++++++++++++++++++++++++++++++
         elseif opts.bt == true % PGB, no CV.            
-            fprintf('Accelerated proximal gradient with backtracking line search. \n')            
+            fprintf('Accelerated proximal gradient with backtracking line search (APGB). \n')            
             
             % Check input.
             if opts.L <=0
@@ -178,20 +178,22 @@ elseif method == "APG" % Use accelerated proximal gradient.
 % ALTERNATING DIRECTION METHOD OF MULTIPLIERS.
 % +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 elseif method == "ADMM"
+    % Check mu.
+    if opts.mu <= 0
+        error('Augmented Lagrangian parameter mu must be positive.')
+    end
     
     if cv == false % NO CV.
-        % Check mu.
-        if opts.mu <= 0
-            error('Augmented Lagrangian parameter mu must be positive.')
-        end
+       
         
         % Prepare input.
         PGtol.abs = intol;
         PGtol.rel = intol;
         
         % Call ADMM.
-        [B,Q] = SDAD(X, Y, Om, gam, lam, opts.mu, q, insteps, PGtol, outsteps, outtol, opts.quiet)
-%                 SDAD(Xt, Yt, Om, gam, lam, mu, q, PGsteps, PGtol, maxits, tol, quiet)
+        fprintf('Alternating direction method of multipliers (ADMM).\n')
+        [B,Q] = SDAD(X, Y, Om, gam, lam, opts.mu, q, insteps, PGtol, outsteps, outtol, opts.quiet);
+
     end % if cv.
 else % Method not allowed.
     error('Not a valid method. Please choose from "PG", "APG", or "ADMM".')

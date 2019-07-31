@@ -125,6 +125,9 @@ for j = 1:q
         
         % Check convergence.
         if max(db, dt) <= tol             % Converged.
+            if quiet == false
+                fprintf('Found discriminant vector %d after %d iterations.\n', j, its)
+            end
             totalits(j) = its;
             break
         end

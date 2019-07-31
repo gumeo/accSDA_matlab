@@ -92,9 +92,9 @@ for k = 0:maxits
     es = sqrt(p)*tol.abs + tol.rel*norm(y);
     
     % Display current iteration stats.
-%     if (k <=2 || mod(k,10) == 0) && quiet==false
+    if (k <=2 || mod(k,10) == 0) && quiet==false
         fprintf('%3g \t\t + %1.2e \t +  %1.2e \t + %1.2e \n', k, dr-ep, ds-es, max(norm(x), norm(y)))
-%     end
+    end
     
     
     % Check if the residual norms are less than the given tolerance.
