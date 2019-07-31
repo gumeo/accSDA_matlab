@@ -18,9 +18,9 @@ load('ECG.mat')
 %%
 Om = eye(136);
 gam = 1e-3;
-lam = 1e-2;
+lam = [1e-4; 1e-3; 1e-2; 1e-1];
 
-cv = false;
+cv = true;
 
 method = "APG";
 opts.q = 1;
@@ -33,6 +33,8 @@ opts.bt = true;
 opts.L = 0.25;
 opts.eta = 1.25;
 opts.mu = 4;
+opts.feat = 0.25;
+opts.folds = 5;
 
 %% Calculate DVs. 
 [B,Q] = ASDA(Xt,Yt, Om, gam, lam, cv, method, opts);

@@ -1,4 +1,4 @@
-function [x, mu, sig] = normalize(x)
+function [x, mu, sig, feat] = normalize(x)
 % NORMALIZE Transforms data x to have column mean 1 and variance 0.
 % ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % INPUT.

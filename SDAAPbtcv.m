@@ -42,6 +42,36 @@ Y = train.Y;
 [n, p] = size(X);
 [~, K] = size(Y);
 
+% If n is not divisible by K, duplicate some records for the sake of
+% cross validation.
+pad = 0; % Initialize number of padding observations.
+if mod(n,folds) > 0
+    % number of elements to duplicate.
+    pad = ceil(n/folds)*folds - n;
+
+    % duplicate elements of X and Y.
+    X = [X; X(1:pad, :)];
+    Y = [Y; Y(1:pad, :)];
+
+end
+
+% Get new size of X.
+[n, ~] = size(X);
+
+% Randomly permute rows of X.
+
+prm = randperm(n);
+X = X(prm, :);
+Y = Y(prm, :);
+
+% Extract class labels.
+[~, labs] = max(Y, [],2 );
+% [~, labs] = max(Y'); labs = labs';
+
+% Sort lambdas in ascending order (break ties by using largest lambda =
+% sparsest vector).
+lams = sort(lams, 'ascend');
+
 
 %% Initialize cross-validation indices.
 
@@ -72,12 +102,12 @@ for f = 1 : folds
     
     % Extract X and Y from train.
     Xt = X(tinds, :);
-    [Xt, mut, sigt] = normalize(Xt);
+    [Xt, mut, sigt,ft] = normalize(Xt);
     Yt = Y(tinds, :);
 
     % Extract training data.
     Xv = X(vinds, :);
-    Xv = normalize_test(Xv, mut, sigt);
+    Xv = normalize_test(Xv, mut, sigt, ft);
     %Yv = Y(vinds, :);
     % Get dimensions of training matrices.
     [nt, p] = size(Xt);
@@ -115,9 +145,9 @@ for f = 1 : folds
     %% Validation Loop.
 
     if (quiet ==0)
-        fprintf('++++++++++++++++++++++++++++++++++++\n')
+        fprintf('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
         fprintf('Fold %d \n', f)
-        fprintf('++++++++++++++++++++++++++++++++++++\n')
+        fprintf('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
     end
     
     % Initialize B and Q.
@@ -185,8 +215,8 @@ for f = 1 : folds
             else %  Warm-start with previous lambda.
                 beta = B(:, j, ll-1);
             end
-            fprintf('norm b0: %1.3d \n', norm(beta))
-            fprintf('l0 b0: %d \n', nnz(beta))
+%             fprintf('norm b0: %1.3d \n', norm(beta))
+%             fprintf('l0 b0: %d \n', nnz(beta))
 
             %+++++++++++++++++++++++++++++++++++++++++++++++++++++
             % Alternating direction method to update (theta, beta)
@@ -200,7 +230,7 @@ for f = 1 : folds
                 % Update beta using proximal gradient step.
                 b_old = beta;
 
-                [beta, ~] = APG_ENbt(A, d, beta, lams(ll),L, eta, PGsteps, PGtol);
+                [beta, ~] = APG_ENbt(A, d, beta, lams(ll),L, eta, PGsteps, PGtol, true);
                 
 
                 % Update theta using the projected solution.
@@ -259,14 +289,14 @@ for f = 1 : folds
         if  (1<= stats.l0) && (stats.l0 <= q*p*feat) 
         
 %         if  (1<= stats.l0 <= q*p*feat)% if fraction nonzero features less than feat.
-            fprintf('Sparse enough. Use MC as score. \n')
+%             fprintf('Sparse enough. Use MC as score. \n')
             % Use misclassification rate as validation score.
             scores(f, ll) = mc(f, ll);
             %         elseif nnz(B) < 0.5; % Found trivial solution.
             %             %fprintf('dq \n')
             %             scores(f, 11) = 10000; % Disqualify with maximum possible score.
         elseif (stats.l0 > q*p*feat) % Solution is not sparse enough, use most sparse as measure of quality instead.
-            fprintf('Not sparse enough. Use cardinality as score. \n')
+%             fprintf('Not sparse enough. Use cardinality as score. \n')
             
             scores(f, ll) = stats.l0;
         end
@@ -320,4 +350,4 @@ Xt = X(1:(n-pad), :);
 Xt = normalize(Xt);
 Yt = Y(1:(n-pad), :);
 
-[B,Q] = SDAAPbt(Xt, Yt, Om, gam, lams(lbest),L, eta,  q, PGsteps, PGtol, maxits, tol);
+[B,Q] = SDAAPbt(Xt, Yt, Om, gam, lams(lbest),L, eta,  q, PGsteps, PGtol, maxits, tol, true);

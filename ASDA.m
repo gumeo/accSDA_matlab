@@ -172,6 +172,61 @@ elseif method == "APG" % Use accelerated proximal gradient.
         
         end % if BT.            
         
+    %+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    elseif cv == true % APG CV. 
+        % Check lam.
+        if min(lam) <= 0
+            error('Lambda must be a vector of positive real numbers if using CV.')
+        end
+        
+        % Check feat.
+        if opts.feat < 0 || opts.feat > 1
+            error('Maximum fraction of nonzero entries must be between 0 and 1.')
+        end
+        
+        % Check folds.
+        if opts.folds < 0 || opts.folds > n || opts.folds ~= floor(opts.folds)
+            error('Number of folds must be an integer between 1 and n.')
+        end
+        
+        % Prepare train.
+        train.X = X;
+        train.Y = Y;
+        
+        %+++++++++++++++++++++++++++++++++++
+        % APG, with CV, but no BT.
+        %+++++++++++++++++++++++++++++++++++
+        if opts.bt == false            
+            fprintf('Cross validation using accelerated proximal gradient with constant step size (APG). \n')
+            
+            % Call SDAAP.            
+            [B,Q] = SDAAPcv(train, opts.folds, Om, gam, lam, q, insteps, intol, outsteps, outtol, opts.feat, opts.quiet);
+            
+        %+++++++++++++++++++++++++++++++++++
+        % APGB, with CV and BT
+        %+++++++++++++++++++++++++++++++++++
+        elseif opts.bt == true % APGB, with CV.            
+            fprintf('Cross validation using accelerated proximal gradient with backtracking line search (APGB). \n')            
+            
+            % Check input.
+            if opts.L <=0
+                error('Initial Lipschitz constant estimate must be positive.')
+            end
+            
+            if opts.eta <= 1
+                error('Backtracking scaling factor must be > 1.')
+            end
+            
+            % Call SDAPbt.
+            [B,Q] = SDAAPbtcv(train, opts.folds, Om, gam, lam, opts.L, opts.eta, q, insteps, intol, outsteps, outtol, opts.feat, opts.quiet); 
+            
+        else % opts.bt missing or not logical.
+            error('opts.bt must be logical if using proximal gradient method.')            
+        
+        end % if BT. 
+
+    else % WRONG INPUT FOR CV.
+        error('CV must be logical.')
     end % if cv.
     
 % +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -183,16 +238,50 @@ elseif method == "ADMM"
         error('Augmented Lagrangian parameter mu must be positive.')
     end
     
-    if cv == false % NO CV.
-       
+    % Prepare input for stopping tolerances.
+    PGtol.abs = intol;
+    PGtol.rel = intol;
+    
+    %+++++++++++++++++++++++++++++++++++++++++++++++++++++++    
+    if cv == false % NO CV.   
         
-        % Prepare input.
-        PGtol.abs = intol;
-        PGtol.rel = intol;
+        % Check lambda.
+        if length(lam) > 1 || lam < 0
+            error('Lambda must be positive if not using CV.')
+        end
         
         % Call ADMM.
         fprintf('Alternating direction method of multipliers (ADMM).\n')
         [B,Q] = SDAD(X, Y, Om, gam, lam, opts.mu, q, insteps, PGtol, outsteps, outtol, opts.quiet);
+        
+    %+++++++++++++++++++++++++++++++++++++++++++++++++++++++    
+    elseif cv == true % ADMM CV.
+        fprintf('Cross validation for ADMM. \n')
+        
+        % Check lam.
+        if min(lam) <= 0
+            error('Lambda must be a vector of positive real numbers if using CV.')
+        end
+        
+        % Check feat.
+        if opts.feat < 0 || opts.feat > 1
+            error('Maximum fraction of nonzero entries must be between 0 and 1.')
+        end
+        
+        % Check folds.
+        if opts.folds < 0 || opts.folds > n || opts.folds ~= floor(opts.folds)
+            error('Number of folds must be an integer between 1 and n.')
+        end
+        
+        % Prepare train.
+        train.X = X;
+        train.Y = Y;
+        
+        % Call CV with ADMM.
+        [B,Q] = SDADcv(train, opts.folds, Om, gam, lam, opts.mu, q, insteps, PGtol, outsteps, outtol, opts.feat, opts.quiet);       
+        
+    else % WRONG INPUT FOR CV.
+        error('CV must be logical.')      
 
     end % if cv.
 else % Method not allowed.

@@ -7,8 +7,7 @@ function [B, Q, lbest, lambest,scores] = SDADcv(train, folds, Om, gam, lams, mu,
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Input
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% train,val.Y: n by K matrix of indicator variables (Yij = 1 if i in classs j)
-% theta0: initial solution.
+% train.X, train.Y: training data.
 % folds: number of folds to use in K-fold cross-validation.
 % Om: p by p parameter matrix Omega in generalized elastic net penalty.
 % gam > 0: regularization parameter for elastic net penalty.
@@ -91,12 +90,12 @@ for f = 1 : folds
     % Extract X and Y from train.
     Xt = X(tinds, :);
     Yt = Y(tinds, :);
-    [Xt, mut, sigt] = normalize(Xt);
+    [Xt, mut, sigt, ft] = normalize(Xt);
 
     % Extract training data.
     Xv = X(vinds, :);
 %     Yv = Y(vinds, :);
-    Xv = normalize_test(Xv, mut, sigt);
+    Xv = normalize_test(Xv, mut, sigt, ft);
     
     % Get dimensions of training matrices.
     [nt, p] = size(Xt);
@@ -139,9 +138,9 @@ for f = 1 : folds
     %% Validation Loop.
 
     if (quiet == 0)
-        fprintf('++++++++++++++++++++++++++++++++++++\n')
+        fprintf('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
         fprintf('Fold %d \n', f)
-        fprintf('++++++++++++++++++++++++++++++++++++\n')
+        fprintf('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
     end
     %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     % Loop through potential regularization parameters.
@@ -257,14 +256,14 @@ for f = 1 : folds
         if  (1<= stats.l0) && (stats.l0 <= q*p*feat) 
         
 %         if  (1<= stats.l0 <= q*p*feat)% if fraction nonzero features less than feat.
-            fprintf('Sparse enough. Use MC as score. \n')
+%             fprintf('Sparse enough. Use MC as score. \n')
             % Use misclassification rate as validation score.
             scores(f, ll) = mc(f, ll);
             %         elseif nnz(B) < 0.5; % Found trivial solution.
             %             %fprintf('dq \n')
             %             scores(f, 11) = 10000; % Disqualify with maximum possible score.
         elseif (stats.l0 > q*p*feat) % Solution is not sparse enough, use most sparse as measure of quality instead.
-            fprintf('Not sparse enough. Use cardinality as score. \n')
+%             fprintf('Not sparse enough. Use cardinality as score. \n')
             
             scores(f, ll) = stats.l0;
         end
@@ -295,7 +294,9 @@ end % folds.
 
 %%  Find best solution.
 
-fprintf('Finished training, choosing lambda.\n')
+if quiet == false
+    fprintf('Finished training lambda.\n')
+end
 % average CV scores.
 avg_score = mean(scores);
 
@@ -307,7 +308,9 @@ lambest = lams(lbest);
 
 %% Solve with lambda = lam(lbest).
 
-%fprintf('Solving with best lambda.\n')
+if quiet == false
+    fprintf('Solving with best lambda.\n')
+end
 % Use full training set.
 Xt = train.X;
 Yt = train.Y;

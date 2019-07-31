@@ -97,12 +97,12 @@ for f = 1 : folds
     
     % Extract X and Y from train.
     Xt = X(tinds, :);
-    [Xt, mut, sigt] = normalize(Xt);
+    [Xt, mut, sigt, ft] = normalize(Xt);
     Yt = Y(tinds, :);
 
     % Extract training data.
     Xv = X(vinds, :);
-    Xv = normalize_test(Xv, mut, sigt);
+    Xv = normalize_test(Xv, mut, sigt, ft);
 %     Yv = Y(vinds, :);
     % Get dimensions of training matrices.
     [nt, p] = size(Xt);
@@ -141,9 +141,9 @@ for f = 1 : folds
     %% Validation Loop.
 
     if (quiet ==0)
-        fprintf('++++++++++++++++++++++++++++++++++++\n')
+        fprintf('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
         fprintf('Fold %d \n', f)
-        fprintf('++++++++++++++++++++++++++++++++++++\n')
+        fprintf('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
     end
     
     % Initialize B and Q.
@@ -211,8 +211,8 @@ for f = 1 : folds
             else %  Warm-start with previous lambda.
                 beta = B(:, j, ll-1);
             end
-            fprintf('norm b0: %1.3d \n', norm(beta))
-            fprintf('l0 b0: %d \n', nnz(beta))
+%             fprintf('norm b0: %1.3d \n', norm(beta))
+%             fprintf('l0 b0: %d \n', nnz(beta))
 
             %+++++++++++++++++++++++++++++++++++++++++++++++++++++
             % Alternating direction method to update (theta, beta)
@@ -226,7 +226,7 @@ for f = 1 : folds
                 % Update beta using proximal gradient step.
                 b_old = beta;
                 %tic
-                [beta, ~] = APG_EN2(A, d, beta, lams(ll), alpha, PGsteps, PGtol);
+                [beta, ~] = APG_EN2(A, d, beta, lams(ll), alpha, PGsteps, PGtol, true);
                 
 
                 % Update theta using the projected solution.
@@ -281,18 +281,18 @@ for f = 1 : folds
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         % Validation scores.
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-        %nnz(B)
+        
         if  (1<= stats.l0) && (stats.l0 <= q*p*feat) 
         
 %         if  (1<= stats.l0 <= q*p*feat)% if fraction nonzero features less than feat.
-            fprintf('Sparse enough. Use MC as score. \n')
+%             fprintf('Sparse enough. Use MC as score. \n')
             % Use misclassification rate as validation score.
             scores(f, ll) = mc(f, ll);
             %         elseif nnz(B) < 0.5; % Found trivial solution.
             %             %fprintf('dq \n')
             %             scores(f, 11) = 10000; % Disqualify with maximum possible score.
         elseif (stats.l0 > q*p*feat) % Solution is not sparse enough, use most sparse as measure of quality instead.
-            fprintf('Not sparse enough. Use cardinality as score. \n')
+%             fprintf('Not sparse enough. Use cardinality as score. \n')
             
             scores(f, ll) = stats.l0;
         end
@@ -346,4 +346,4 @@ Xt = X(1:(n-pad), :);
 Xt = normalize(Xt);
 Yt = Y(1:(n-pad), :);
 
-[B,Q] = SDAAP(Xt, Yt, Om, gam, lams(lbest), q, PGsteps, PGtol, maxits, tol);
+[B,Q] = SDAAP(Xt, Yt, Om, gam, lams(lbest), q, PGsteps, PGtol, maxits, tol, true);

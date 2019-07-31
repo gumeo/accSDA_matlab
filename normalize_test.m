@@ -12,6 +12,8 @@ function x=normalize_test(x, mu, sig, feat)
 % x - transformed testing data.
 % ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+n = size(x,1);
+
 % Delete nontrivial features.
 x = x(:, feat);
 
