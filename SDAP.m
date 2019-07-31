@@ -1,4 +1,4 @@
-function [B,Q, subits, totalits]  = SDAP(Xt, Yt, Om, gam, lam, q, PGsteps, PGtol, maxits, tol)
+function [B,Q, subits, totalits]  = SDAP(Xt, Yt, Om, gam, lam, q, PGsteps, PGtol, maxits, tol, quiet)
 % Applies proximal gradien algorithm 
 % to the optimal scoring formulation of
 % sparse discriminan analysis proposed by Clemmensen et al. 2011.
@@ -98,7 +98,7 @@ for j = 1:q
         % Update beta using proximal gradien step.
         b_old = beta;
 
-        [beta, steps] = prox_EN(A, d, beta, lam, alpha, PGsteps, PGtol);
+        [beta, steps] = prox_EN(A, d, beta, lam, alpha, PGsteps, PGtol, quiet);
         subits = subits + steps;
                 
         % Update theta using the projected solution.
@@ -113,7 +113,10 @@ for j = 1:q
         % Progress.
         db = norm(beta-b_old)/norm(beta);
         dt = norm(theta-t_old)/norm(theta);
-        %fprinf('It %5.0f      db %5.2f      dt %5.2f      Subprob its %5.0f It time %5.2f\n', its, db, dt, subprob_its, update_time)
+        if quiet == false
+            fprintf('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
+            fprintf('OutIt: %1.2d \t + db %1.2e \t\t + dt %5.2e \n', its, db, dt)            
+        end
         
          % Check convergence.        
         if max(db, dt) <= tol             % Converged.

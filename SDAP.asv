@@ -1,32 +1,28 @@
-function [B,Q, subits, totalits] = SDAPbt(Xt, Yt, Om, gam, lam, L, eta, q, PGsteps, PGtol, maxits, tol, quiet)
-% SDAPBT PG with backtracking linear search for SOS.
-% Applies proximal gradient algorithm (with backtracking)
+function [B,Q, subits, totalits]  = SDAP(Xt, Yt, Om, gam, lam, q, PGsteps, PGtol, maxits, tol, quiet)
+% Applies proximal gradien algorithm 
 % to the optimal scoring formulation of
-% sparse discriminant analysis proposed by Clemmensen et al. 2011.
+% sparse discriminan analysis proposed by Clemmensen et al. 2011.
 %
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
+% Input`
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Xt: n by p data matrix.
 % Yt: n by K matrix of indicator variables (Yij = 1 if i in classs j)
 % Om: p by p parameter matrix Omega in generalized elastic net penalty.
 % gam > 0: regularization parameter for elastic net penalty.
 % lam > 0: regularization parameters for l1 penalty.
-% L > 0: initial Lipschitz estimation.
-% eta > 1: scaling parameter for backtracking.
-% q: desired number of discriminant vectors.
+% q: desired number of discriminan vectors.
 % PGsteps: max its of inner prox-grad algorithm to update beta.
 % PGtol: stopping tolerance for inner APG method.
 % maxits: number of iterations to run alternating direction alg.
 % tol: stopping tolerance for alternating direction algorithm.
-% quiet: toggle display of intermediate output.
+
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Output
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% B: p by q  matrix of discriminant vectors.
-% Q: K by q  matrix of scoring vectors.
+% B: p by q by nlam matrix of discriminan vectors.
+% Q: K by q by nlam matrix of scoring vectors.
 % subits, totalits: number of inner and outer loop iterations.
-
 
 % Record number of subproblem iterations.
 subits = 0;
@@ -38,11 +34,11 @@ totalits = maxits*ones(q,1);
 [~, K] = size(Yt);
 
 % Precompute repeatedly used matrix products
-% A = (Xt'*Xt + gam*Om); % Elastic net coefficient matrix.
+
 A = 2*(Xt'*Xt/n + gam*Om);
-%alpha = 1/norm(A); % Step length in PGA.
+% fprintf('A norm: %d\n', norm(A))% Elastic net coefficien matrix.
+alpha = 1/norm(A, 'fro'); % Step length in PGA.
 D = 1/n*(Yt'*Yt); %D 
-%XY = X'*Y; % X'Y.
 R = chol(D);
 
 % Initialize B and Q.
@@ -86,7 +82,8 @@ for j = 1:q
     else
         % Initialize with all-zeros beta.
         beta = zeros(p,1);
-    end   
+    end
+    
     
     
     %+++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -95,17 +92,15 @@ for j = 1:q
     
     for its = 1:maxits
         
-        % Compute coefficient vector for elastic net step.
+        % Compute coefficien vector for elastic net step.
         d = 2*Xt'*(Yt*(theta/n));
         
-        % Update beta using proximal gradient step.
+        % Update beta using proximal gradien step.
         b_old = beta;
 
-        [beta, steps]  = prox_ENbt(A, d, beta, lam, L, eta, PGsteps, PGtol, quiet);
+        [beta, steps] = prox_EN(A, d, beta, lam, alpha, PGsteps, PGtol, quiet);
         subits = subits + steps;
-
-        
-        
+                
         % Update theta using the projected solution.
         % theta = Mj*D^{-1}*Y'*X*beta.
         b = Yt'*(Xt*beta);
@@ -119,11 +114,11 @@ for j = 1:q
         db = norm(beta-b_old)/norm(beta);
         dt = norm(theta-t_old)/norm(theta);
         if quiet == false
-            fprintf('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
-            fprintf('OutIt: %1.2d \t + db %1.2e \t\t + dt %5.2e \n', its, db, dt)            
+            fprintf('
+            fprintf('It: %1.2d \t | db %1.2e \t | dt %5.2e \n', its, db, dt)
         end
         
-        % Check convergence.
+         % Check convergence.        
         if max(db, dt) <= tol             % Converged.
             totalits(j) = its;
             break
@@ -135,5 +130,6 @@ for j = 1:q
     B(:,j) = beta;
 end
     
+
 % Sum iterations.
 totalits = sum(totalits);
