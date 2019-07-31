@@ -12,29 +12,31 @@
 % gam = 0.001;
 
 % Test on ECG.
-load('ECGdata (normalized).mat')
+load('ECG.mat')
 
 
 %%
+Om = eye(136);
+gam = 1e-3;
 lam = 1e-2;
 
 cv = false;
 
 method = "APG";
-opts.q = 2;
+opts.q = 1;
 opts.insteps = 1500;
 opts.outsteps = 10;
 opts.intol = 1e-7;
 opts.outtol = 1e-4;
 opts.quiet = false;
-opts.bt = false;
-% opts.L = 0.25;
-% opts.eta = 1.25;
+opts.bt = true;
+opts.L = 0.25;
+opts.eta = 1.25;
 opts.mu = 4;
 
 %% Calculate DVs. 
-[B,Q] = ASDA(X,Y, Om, gam, lam, cv, method, opts);
+[B,Q] = ASDA(Xt,Yt, Om, gam, lam, cv, method, opts);
 plot(B);
 
 %% 
-scatterplot(X*B)
+scatterplot(Xt*B)
