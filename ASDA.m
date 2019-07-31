@@ -141,18 +141,18 @@ elseif method == "APG" % Use accelerated proximal gradient.
         end
         
         %+++++++++++++++++++++++++++++++++++
-        % PG, no CV, no BT.
+        % APG, no CV, no BT.
         %+++++++++++++++++++++++++++++++++++
         if opts.bt == false            
-            fprintf('Calling proximal gradient with constant step size. \n')
+            fprintf('Calling accelerated proximal gradient with constant step size. \n')
             % Call SDAP.
-            [B,Q] = SDAP(X,Y, Om, gam, lam, q, insteps, intol, outsteps, outtol, opts.quiet);
+            [B,Q] = SDAAP(X,Y, Om, gam, lam, q, insteps, intol, outsteps, outtol, opts.quiet);
         
         %+++++++++++++++++++++++++++++++++++
-        % PGB, no CV
+        % APGB, no CV
         %+++++++++++++++++++++++++++++++++++
         elseif opts.bt == true % PGB, no CV.            
-            fprintf('Calling proximal gradient with backtracking line search. \n')            
+            fprintf('Calling accelerated proximal gradient with backtracking line search. \n')            
             
             % Check input.
             if opts.L <=0
@@ -164,7 +164,7 @@ elseif method == "APG" % Use accelerated proximal gradient.
             end
             
             % Call SDAPbt.
-            [B,Q] = SDAPbt(X, Y, Om, gam, lam, opts.L, opts.eta, q, insteps, intol, outsteps, outtol, opts.quiet); 
+            [B,Q] = SDAAPbt(X, Y, Om, gam, lam, opts.L, opts.eta, q, insteps, intol, outsteps, outtol, opts.quiet); 
             
         else % opts.bt missing or not logical.
             error('opts.bt must be logical if using proximal gradient method.')            

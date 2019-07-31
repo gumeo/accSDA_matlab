@@ -1,4 +1,4 @@
-function [B,Q, subits, totalits] = SDAAP(Xt, Yt, Om, gam, lam, q, PGsteps, PGtol, maxits, tol)
+function [B,Q, subits, totalits] = SDAAP(Xt, Yt, Om, gam, lam, q, PGsteps, PGtol, maxits, tol, quiet)
 % Applies accelerated proximal gradient algorithm 
 % to the optimal scoring formulation of
 % sparse discriminant analysis proposed by Clemmensen et al. 2011.
@@ -16,7 +16,7 @@ function [B,Q, subits, totalits] = SDAAP(Xt, Yt, Om, gam, lam, q, PGsteps, PGtol
 % PGtol: stopping tolerance for inner APG method.
 % maxits: number of iterations to run alternating direction alg.
 % tol: stopping tolerance for alternating direction algorithm.
-
+% quiet: toggle display of intermediate output.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Output
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -106,7 +106,7 @@ for j = 1:q
         % Update beta using proximal gradient step.
         b_old = beta;
         
-        [beta, steps] = APG_EN2(A, d, beta, lam, alpha, PGsteps, PGtol);
+        [beta, steps] = APG_EN2(A, d, beta, lam, alpha, PGsteps, PGtol, quiet);
         subits = subits + steps;
         
         % Update theta using the projected solution.
@@ -135,7 +135,10 @@ for j = 1:q
       
         
         % Progress.              
-        %fprintf('It %5.0f      db %5.2f      dt %5.2f  \n', its, db, dt)
+        if quiet == false
+            fprintf('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
+            fprintf('OutIt: %1.2d \t + db %1.2e \t\t + dt %5.2e \n', its, db, dt)            
+        end
         
         % Check convergence.        
         if max(db, dt) <= tol             % Converged.

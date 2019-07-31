@@ -16,7 +16,7 @@ function [B,Q, subits, totalits]  = SDAP(Xt, Yt, Om, gam, lam, q, PGsteps, PGtol
 % PGtol: stopping tolerance for inner APG method.
 % maxits: number of iterations to run alternating direction alg.
 % tol: stopping tolerance for alternating direction algorithm.
-
+% quiet: toggle display of intermediate output.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Output
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
