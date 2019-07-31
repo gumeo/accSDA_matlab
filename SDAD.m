@@ -17,7 +17,9 @@ function [B, Q, subits, totalits] = SDAD(Xt, Yt, Om, gam, lam, mu, q, PGsteps, P
 % q: desired number of discriminant vectors.
 % PGsteps: max its of inner prox-grad algorithm to update beta.
 % maxits: number of iterations to run alternating direction alg.
-% tol: stopping tolerance for alternating direction algorithm.
+% PGtol: stopping tolerance for ADMM algorithm.
+% tol: stopping tolerance for outer loop.
+% quiet: toggle display of intermediate output.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Output
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -44,6 +46,9 @@ if norm(diag(diag(Om)) - Om, 'fro') < 1e-15
     % smaller dimensional linear system solves.
     %display('Using SMW')
     SMW = 1;
+    if quiet== false
+        fprintf('Using SMW for x-update.\n')
+    end
     
     % Easy to invert diagonal part of Elastic net coefficient matrix.
     M = mu + 2*gam*diag(Om); 
@@ -64,6 +69,9 @@ else % Use Cholesky for solving linear systems in ADMM step.
     
     % Flag to not use SMW.
     SMW = 0;
+    if quiet== false
+        fprintf('Not using SMW for x-update.\n')
+    end
     A = mu*eye(p) + 2*(Xt'*Xt/nt + gam*Om); % Elastic net coefficient matrix.
     R2 = chol(A); % Cholesky factorization of mu*I + A.
 end
@@ -124,10 +132,11 @@ for j = 1:q
         
         if SMW == 1
             % Use SMW-based ADMM.
+            
             [~,beta,~, steps] = ADMM_EN_SMW(Minv, Xt, RS, d, beta, lam, mu, PGsteps, PGtol, quiet);
         else
             % Use vanilla ADMM.
-            [~, beta,~, steps] = ADMM_EN2(R2, d, beta, lam, mu, PGsteps, PGtol, 1);
+            [~, beta,~, steps] = ADMM_EN2(R2, d, beta, lam, mu, PGsteps, PGtol, quiet);
         end
         subits = subits + steps;
                 
@@ -156,7 +165,12 @@ for j = 1:q
             dt = 0;
         end
         
-        %fprintf('It %5.0f   nb %5.2e   db %5.2e      dt %5.2e      \n', its, norm(beta), db, dt)
+        % Print progress.
+        if quiet == false
+            fprintf('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
+            fprintf('OutIt: %1.2d \t + db %1.2e \t + dt %5.2e \n', its, db, dt)            
+        end
+        
         
          % Check convergence.        
         if max(db, dt) <= tol             % Converged.

@@ -29,7 +29,8 @@ function [B, Q] = ASDA(X, Y, Om, gam, lam, cv, method, opts)
 %   .bt - logical: indicates to use backtracking line search if true, o/w
 %       uses constant step size. Only needed for PG/APG.
 %   .L: if bt true, the initial value of possible Lipschitz constant.
-%   .eta >0: scaling factor in backtracking line search.
+%   .eta > 0: scaling factor in backtracking line search.
+%   .mu > 0: augmented Lagrangian penalty parameter for ADMM.
 %   .feat - in [0,1]: if cv true, the desired max cardinality of dvs.
 %   .quiet - logical: indicate whether to display intermediate stats.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -99,7 +100,7 @@ if method == "PG"  % Proximal gradient
         % PG, no CV, no BT.
         %+++++++++++++++++++++++++++++++++++
         if opts.bt == false            
-            fprintf('Calling proximal gradient with constant step size. \n')
+            fprintf('Proximal gradient with constant step size. \n')
             % Call SDAP.
             [B,Q] = SDAP(X,Y, Om, gam, lam, q, insteps, intol, outsteps, outtol, opts.quiet);
         
@@ -107,7 +108,7 @@ if method == "PG"  % Proximal gradient
         % PGB, no CV
         %+++++++++++++++++++++++++++++++++++
         elseif opts.bt == true % PGB, no CV.            
-            fprintf('Calling proximal gradient with backtracking line search. \n')            
+            fprintf('Proximal gradient with backtracking line search. \n')            
             
             % Check input.
             if opts.L <=0
@@ -144,7 +145,7 @@ elseif method == "APG" % Use accelerated proximal gradient.
         % APG, no CV, no BT.
         %+++++++++++++++++++++++++++++++++++
         if opts.bt == false            
-            fprintf('Calling accelerated proximal gradient with constant step size. \n')
+            fprintf('Accelerated proximal gradient with constant step size. \n')
             % Call SDAP.
             [B,Q] = SDAAP(X,Y, Om, gam, lam, q, insteps, intol, outsteps, outtol, opts.quiet);
         
@@ -152,7 +153,7 @@ elseif method == "APG" % Use accelerated proximal gradient.
         % APGB, no CV
         %+++++++++++++++++++++++++++++++++++
         elseif opts.bt == true % PGB, no CV.            
-            fprintf('Calling accelerated proximal gradient with backtracking line search. \n')            
+            fprintf('Accelerated proximal gradient with backtracking line search. \n')            
             
             % Check input.
             if opts.L <=0
@@ -169,10 +170,29 @@ elseif method == "APG" % Use accelerated proximal gradient.
         else % opts.bt missing or not logical.
             error('opts.bt must be logical if using proximal gradient method.')            
         
-        end % PG, no CV              
+        end % if BT.            
         
     end % if cv.
     
+% +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% ALTERNATING DIRECTION METHOD OF MULTIPLIERS.
+% +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+elseif method == "ADMM"
+    
+    if cv == false % NO CV.
+        % Check mu.
+        if opts.mu <= 0
+            error('Augmented Lagrangian parameter mu must be positive.')
+        end
+        
+        % Prepare input.
+        PGtol.abs = intol;
+        PGtol.rel = intol;
+        
+        % Call ADMM.
+        [B,Q] = SDAD(X, Y, Om, gam, lam, opts.mu, q, insteps, PGtol, outsteps, outtol, opts.quiet)
+%                 SDAD(Xt, Yt, Om, gam, lam, mu, q, PGsteps, PGtol, maxits, tol, quiet)
+    end % if cv.
 else % Method not allowed.
     error('Not a valid method. Please choose from "PG", "APG", or "ADMM".')
 end % if method.
