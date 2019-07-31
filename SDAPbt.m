@@ -1,5 +1,6 @@
 function [B,Q, subits, totalits] = SDAPbt(Xt, Yt, Om, gam, lam, L, eta, q, PGsteps, PGtol, maxits, tol)
-% Applies accelerated proximal gradient algorithm 
+% SDAPBT PG with backtracking linear search for SOS.
+% Applies proximal gradient algorithm (with backtracking)
 % to the optimal scoring formulation of
 % sparse discriminant analysis proposed by Clemmensen et al. 2011.
 %
@@ -22,8 +23,8 @@ function [B,Q, subits, totalits] = SDAPbt(Xt, Yt, Om, gam, lam, L, eta, q, PGste
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Output
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% B: p by q by nlam matrix of discriminant vectors.
-% Q: K by q by nlam matrix of scoring vectors.
+% B: p by q  matrix of discriminant vectors.
+% Q: K by q  matrix of scoring vectors.
 % subits, totalits: number of inner and outer loop iterations.
 
 
