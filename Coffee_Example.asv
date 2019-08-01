@@ -1,0 +1,50 @@
+% Coffee spectrogram classification example from Github README.
+
+% Load data set.
+load('Data\Coffee.mat')
+
+% Make X, Y, Xtest, Ytest.
+[n,p] = size(train);
+[nt,~] = size(test);
+X = train(:, 2:p);
+Xtest = train(:, 2:p);
+
+% Make Ys.
+K = 2;
+Y = zeros(n, 2)
+for i = 1:n
+    Y(i, train(i,1)) = 1;
+end
+
+Ytest = zeros(n,2);
+for i = 1:nt
+    Ytest(i, train(i
+
+
+%% 
+% Define required parameters.
+p = 286; % Predictor variable sizes.
+Om = eye(p); % Use identity matrix for Om.
+gam = 1e-3; 
+q = 1; % One fewer than number of classes.
+quiet = true; % Suppress output.
+
+% Optimization parameters.
+insteps = 1000;
+intol = 1e-4;
+outsteps = 25;
+outtol = 1e-4;
+
+% Choose method and additional required arguments.
+method = "APG" % Use accelerated proximal gradient.
+opts.bt = true; % Use backtracking.
+opts.L = 0.25; % initial Lipschitz constant for BT.
+opts.eta = 1.25; % scaling factor for BT.
+
+% Use cross validation, and provide required arguments.
+cv = true;
+opts.folds = 7; % Use 7-fold CV as in paper.
+opts.feat = 0.15; % Want classifiers using 15% of features.
+
+%% Call ASDA.
+ASDAres = ASDA(X, Y, Om, gam, lam, cv, method, q, insteps, outsteps, intol, outtol, quiet, opts);

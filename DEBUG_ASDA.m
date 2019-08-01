@@ -18,19 +18,19 @@ load('Data\Pen.mat')
 %%
 Om = eye(3541);
 gam = 1e-3;
-% lam = [1e-4; 1e-3; 1e-2; 1e-1];
-lam = 1e-2;
+lam = [1e-4; 1e-3; 1e-2; 1e-1];
+% lam = 1e-2;
 
-cv = false;
+cv = true;
 
 method = "PG";
 q = 2;
-insteps = 2500;
+insteps = 15;
 outsteps = 10;
 intol = 1e-7;
 outtol = 1e-4;
 quiet = false;
-opts.bt = false;
+opts.bt = true;
 opts.L = 0.25;
 opts.eta = 1.25;
 opts.mu = 4;
