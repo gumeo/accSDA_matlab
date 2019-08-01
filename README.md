@@ -19,7 +19,10 @@ You can use the package immediately after adding the folder containing all funct
 
 # Usage
 
-You can train sparse discriminant vectors using the Matlab function `ASDA`, called command:
+You can train sparse discriminant vectors using the Matlab function `ASDA`, called using the command:
 ```Matlab
 ASDAres = ASDA(X, Y, Om, gam, lam, cv, method, q, insteps, outsteps, intol, outtol, quiet, opts)
 ```
+The function `ASDA` performs block coordinate descent to solve the sparse optimal scoring problem to train discriminant vectors as described in the paper [Proximal Methods for Sparse Optimal Scoring and Discriminant Analysis](https://arxiv.org/pdf/1705.07194.pdf). The function requires the following input arguments
+>> * `X` training data matrix, with rows containing observations. This data must be standardized so that each predictor feature, i.e., column, has sample mean 0 and variance 1. We have provided the Matlab function `normalize` to standardize data if needed.
+* `Y` training data class indicator matrix. This is a binary matrix with (i,j) entry equal to 1 if observation i belongs to class j and 0 otherwise.
