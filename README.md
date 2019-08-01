@@ -110,8 +110,8 @@ plot(ASDAres.B)
 ```
 which yields the following plot. (This may look slightly different when you run the code due to inherent variation in the cross validation scheme and due to random initialization of the scoring vectors.)
 
-![Image of discriminant vector for Coffee data]
-(./Examples/coffeedvs.png)
+![Image of discriminant vector for Coffee data](./Examples/coffeedvs.png)
+
 
 We can test performance of our classifiers using the `predict` function. We use the following code to do so:
 ```Matlab
