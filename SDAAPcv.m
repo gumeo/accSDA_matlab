@@ -112,9 +112,6 @@ for f = 1 : folds
 
 
     % Precompute repeatedly used matrix products
-    %display('form EN coefficient matrix')
-    %gamOm = gam*Om;
-
     if norm(diag(diag(Om)) - Om, 'fro') < 1e-15 % Omega is diagonal.
         A.flag = 1;
         % Store components of A.
@@ -123,10 +120,6 @@ for f = 1 : folds
         A.n = nt;
 
         alpha = 1/( 2*(norm(Xt,1)*norm(Xt,'inf')/nt + norm(A.gom, 'inf') ));
-        %alpha = 1/( 2*(norm(X)^2/n + norm(A.gom, 'inf') ));
-        %     A.A = 2*(X'*X/n + diag(A.gom));
-        %     fprintf('Test bounds: L = %g, Lt = %g', norm(A.A), 2*(norm(X,1)*norm(X,'inf')/n + norm(gamOm, 'inf') ))
-        %     norm(A.A)
     else
         A.flag = 0;
         A.A = 2*(Xt'*Xt/nt + gam*Om); % Elastic net coefficient matrix.
@@ -146,8 +139,7 @@ for f = 1 : folds
         fprintf('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
     end
     
-    % Initialize B and Q.
-    %Q = ones(K,q, nlam);
+    % Initialize B.
     B = zeros(p, q, nlam);
     
     %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -155,16 +147,14 @@ for f = 1 : folds
     %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     for ll = 1:nlam
 
-%         % Initialize B and Q.
+        % Initialize Q.
         Q = ones(K,q);
-%         B = zeros(p, q);
 
         %%
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         % Call Alternating Direction Method to solve SDA.
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         % For j=1,2,..., q compute the SDA pair (theta_j, beta_j).
-        %[f, lams(ll)]
         for j = 1:q
 
             %+++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -192,12 +182,6 @@ for f = 1 : folds
                     rhs = Xt*((ominv/n).*rhs0);
                     
                     % Compute partial solution.
-%                     size(Xt)
-%                     nt
-%                     size(eye(nt))
-%                     size((Xt*((ominv/(gam*n)).*Xt')))
-%                     size(rhs)
-%                     
                     tmp = (eye(nt) + Xt*((ominv/(gam*nt)).*Xt'))\rhs;
                     
                     % Finishing solving for beta using SMW.
@@ -211,8 +195,6 @@ for f = 1 : folds
             else %  Warm-start with previous lambda.
                 beta = B(:, j, ll-1);
             end
-%             fprintf('norm b0: %1.3d \n', norm(beta))
-%             fprintf('l0 b0: %d \n', nnz(beta))
 
             %+++++++++++++++++++++++++++++++++++++++++++++++++++++
             % Alternating direction method to update (theta, beta)
@@ -230,7 +212,6 @@ for f = 1 : folds
                 
 
                 % Update theta using the projected solution.
-                % theta = Mj*D^{-1}*Y'*X*beta.
                 if norm(beta) > 1e-12
                     % update theta.
                     b = Yt'*(Xt*beta);
@@ -283,17 +264,9 @@ for f = 1 : folds
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         
         if  (1<= stats.l0) && (stats.l0 <= q*p*feat) 
-        
-%         if  (1<= stats.l0 <= q*p*feat)% if fraction nonzero features less than feat.
-%             fprintf('Sparse enough. Use MC as score. \n')
             % Use misclassification rate as validation score.
             scores(f, ll) = mc(f, ll);
-            %         elseif nnz(B) < 0.5; % Found trivial solution.
-            %             %fprintf('dq \n')
-            %             scores(f, 11) = 10000; % Disqualify with maximum possible score.
         elseif (stats.l0 > q*p*feat) % Solution is not sparse enough, use most sparse as measure of quality instead.
-%             fprintf('Not sparse enough. Use cardinality as score. \n')
-            
             scores(f, ll) = stats.l0;
         end
 
@@ -327,15 +300,8 @@ avg_score = mean(scores);
 
 % choose lambda with best average score (break ties by taking largest ->
 % most sparse discriminant vector).
-
-% minidx = find(avg_score == minscore);
-% lbest = max(minidx);
 minscore = min(avg_score);
 lbest = find(avg_score == minscore, 1, 'last');
-
-% [~, lbest] = min(avg_score);
-
-
 lambest = lams(lbest);
 
 
@@ -349,4 +315,5 @@ Xt = X(1:(n-pad), :);
 Xt = normalize(Xt);
 Yt = Y(1:(n-pad), :);
 
+% size(Xt)
 [B,Q] = SDAAP(Xt, Yt, Omold, gam, lams(lbest), q, PGsteps, PGtol, maxits, tol, true);

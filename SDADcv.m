@@ -161,7 +161,6 @@ for f = 1 : folds
         % Call Alternating Direction Method to solve SDA.
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         % For j=1,2,..., q compute the SDA pair (theta_j, beta_j).
-        %[f, lams(ll)]
         for j = 1:q
 
             %+++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -176,7 +175,6 @@ for f = 1 : folds
 
             % Initialize theta.
             theta = Mj(rand(K,1));
-            %theta = Mj(theta0);
             theta = theta/sqrt(theta'*D*theta);
 
             % Initialize coefficient vector for elastic net step.
@@ -234,7 +232,6 @@ for f = 1 : folds
                 % Check convergence.
                 if max(db, dt) < tol
                     % Converged.
-                    %fprintf('Algorithm converged for %g iterations\n', j)
                     break
                 end
             end %its
@@ -256,17 +253,9 @@ for f = 1 : folds
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
         if  (1<= stats.l0) && (stats.l0 <= q*p*feat) 
-        
-%         if  (1<= stats.l0 <= q*p*feat)% if fraction nonzero features less than feat.
-%             fprintf('Sparse enough. Use MC as score. \n')
             % Use misclassification rate as validation score.
             scores(f, ll) = mc(f, ll);
-            %         elseif nnz(B) < 0.5; % Found trivial solution.
-            %             %fprintf('dq \n')
-            %             scores(f, 11) = 10000; % Disqualify with maximum possible score.
         elseif (stats.l0 > q*p*feat) % Solution is not sparse enough, use most sparse as measure of quality instead.
-%             fprintf('Not sparse enough. Use cardinality as score. \n')
-            
             scores(f, ll) = stats.l0;
         end
 

@@ -92,7 +92,7 @@ if method == "PG"  % Proximal gradient
         
         % Check lambda.
         if length(lam) > 1 || lam < 0
-            error('Lambda must be a positive integer if not using CV.')
+            error('Lambda must be a positive scalar if not using CV.')
         end
         
         %+++++++++++++++++++++++++++++++++++
@@ -190,7 +190,7 @@ elseif method == "APG" % Use accelerated proximal gradient.
         
         % Check lambda.
         if length(lam) > 1 || lam < 0
-            error('Lambda must be a positive integer if not using CV.')
+            error('Lambda must be a positive scalar if not using CV.')
         end
         
         %+++++++++++++++++++++++++++++++++++
@@ -299,7 +299,7 @@ elseif method == "ADMM"
         
         % Check lambda.
         if length(lam) > 1 || lam < 0
-            error('Lambda must be positive if not using CV.')
+            error('Lambda must be a positive scalar if not using CV.')
         end
         
         % Call ADMM.
