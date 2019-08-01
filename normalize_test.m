@@ -1,5 +1,6 @@
 function x=normalize_test(x, mu, sig, feat)
-% NORMALIZE_TEST Transforms test data x according to training mean and
+% NORMALIZE_TEST standardizes test data x.
+% Shifts and scales test data according to training mean and
 % variance.
 % ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % INPUT.
@@ -11,6 +12,8 @@ function x=normalize_test(x, mu, sig, feat)
 % OUTPUT.
 % x - transformed testing data.
 % ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+n = size(x,1);
 
 % Delete nontrivial features.
 x = x(:, feat);

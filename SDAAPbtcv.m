@@ -1,13 +1,12 @@
 function [B, Q, lbest, lambest,scores] = SDAAPbtcv(train, folds, Om, gam, lams, L, eta, q, PGsteps, PGtol, maxits, tol, feat, quiet)
-
+% SDAAPBTCV apg with backtracking and cross validation for the SOS problem.
 % Applies accelerated proximal gradient algorithm with cross validation
-% to the optimal scoring formulation of
+% and backtracking line search to the optimal scoring formulation of
 % sparse discriminant analysis proposed by Clemmensen et al. 2011.
 %
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% train,val.Y: n by K matrix of indicator variables (Yij = 1 if i in classs j)
+% INPUT.
+% train: training data set.
 % folds: number of folds to use in K-fold cross-validation.
 % Om: p by p parameter matrix Omega in generalized elastic net penalty.
 % gam > 0: regularization parameter for elastic net penalty.
@@ -20,8 +19,7 @@ function [B, Q, lbest, lambest,scores] = SDAAPbtcv(train, folds, Om, gam, lams, 
 % feat: maximum fraction of nonzero features desired in validation scheme.
 % quiet: toggles display of iteration stats.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Output
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% OUTPUT.
 % B: p by q by nlam matrix of discriminant vectors.
 % Q: K by q by nlam matrix of scoring vectors.
 % best_ind: index of best solution in [B,Q].
@@ -36,11 +34,41 @@ lams = sort(lams, 'ascend');
 % Extract X and Y from train.
 X = train.X;
 Y = train.Y;
-[~, labs] = max(Y, [],2 );
+% [~, labs] = max(Y, [],2 );
 
 % Get dimensions of input matrices.
 [n, p] = size(X);
 [~, K] = size(Y);
+
+% If n is not divisible by K, duplicate some records for the sake of
+% cross validation.
+pad = 0; % Initialize number of padding observations.
+if mod(n,folds) > 0
+    % number of elements to duplicate.
+    pad = ceil(n/folds)*folds - n;
+
+    % duplicate elements of X and Y.
+    X = [X; X(1:pad, :)];
+    Y = [Y; Y(1:pad, :)];
+
+end
+
+% Get new size of X.
+[n, ~] = size(X);
+
+% Randomly permute rows of X.
+
+prm = randperm(n);
+X = X(prm, :);
+Y = Y(prm, :);
+
+% Extract class labels.
+[~, labs] = max(Y, [],2 );
+% [~, labs] = max(Y'); labs = labs';
+
+% Sort lambdas in ascending order (break ties by using largest lambda =
+% sparsest vector).
+lams = sort(lams, 'ascend');
 
 
 %% Initialize cross-validation indices.
@@ -72,12 +100,13 @@ for f = 1 : folds
     
     % Extract X and Y from train.
     Xt = X(tinds, :);
-    [Xt, mut, sigt] = normalize(Xt);
+    [Xt, mut, sigt,ft] = normalize(Xt);
+    Omn = Om(ft, ft);
     Yt = Y(tinds, :);
 
     % Extract training data.
     Xv = X(vinds, :);
-    Xv = normalize_test(Xv, mut, sigt);
+    Xv = normalize_test(Xv, mut, sigt, ft);
     %Yv = Y(vinds, :);
     % Get dimensions of training matrices.
     [nt, p] = size(Xt);
@@ -90,10 +119,10 @@ for f = 1 : folds
     %display('form EN coefficient matrix')
     %gamOm = gam*Om;
 
-    if norm(diag(diag(Om)) - Om, 'fro') < 1e-15 % Omega is diagonal.
+    if norm(diag(diag(Omn)) - Omn, 'fro') < 1e-15 % Omega is diagonal.
         A.flag = 1;
         % Store components of A.
-        A.gom = gam*diag(Om);
+        A.gom = gam*diag(Omn);
         A.X = Xt;
         A.n = nt;
 
@@ -104,7 +133,7 @@ for f = 1 : folds
         %     norm(A.A)
     else
         A.flag = 0;
-        A.A = 2*(Xt'*Xt/nt + gam*Om); % Elastic net coefficient matrix.
+        A.A = 2*(Xt'*Xt/nt + gam*Omn); % Elastic net coefficient matrix.
         %alpha = 1/norm(A.A, 'fro');
     end
     
@@ -115,9 +144,9 @@ for f = 1 : folds
     %% Validation Loop.
 
     if (quiet ==0)
-        fprintf('++++++++++++++++++++++++++++++++++++\n')
+        fprintf('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
         fprintf('Fold %d \n', f)
-        fprintf('++++++++++++++++++++++++++++++++++++\n')
+        fprintf('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
     end
     
     % Initialize B and Q.
@@ -157,13 +186,15 @@ for f = 1 : folds
 
             % Initialize beta.
             if (ll==1) % First lam.                
-                if norm(diag(diag(Om)) - Om, 'fro') < 1e-15 % Use diagonal initializer.
+                if norm(diag(diag(Omn)) - Omn, 'fro') < 1e-15 % Use diagonal initializer.
                     % Extract reciprocal of diagonal of Omega.
-                    ominv = 1./diag(Om);
+                    ominv = 1./diag(Omn);
                     
-                    % Compute rhs of f minimizer system.
+                    % Compute rhs of f minimizer system.                                        
                     rhs0 = Xt'*(Yt*(theta/nt));
                     rhs = Xt*((ominv/n).*rhs0);
+                    
+                    
                     
                     % Compute partial solution.
 %                     size(Xt)
@@ -185,8 +216,8 @@ for f = 1 : folds
             else %  Warm-start with previous lambda.
                 beta = B(:, j, ll-1);
             end
-            fprintf('norm b0: %1.3d \n', norm(beta))
-            fprintf('l0 b0: %d \n', nnz(beta))
+%             fprintf('norm b0: %1.3d \n', norm(beta))
+%             fprintf('l0 b0: %d \n', nnz(beta))
 
             %+++++++++++++++++++++++++++++++++++++++++++++++++++++
             % Alternating direction method to update (theta, beta)
@@ -200,7 +231,7 @@ for f = 1 : folds
                 % Update beta using proximal gradient step.
                 b_old = beta;
 
-                [beta, ~] = APG_ENbt(A, d, beta, lams(ll),L, eta, PGsteps, PGtol);
+                [beta, ~] = APG_ENbt(A, d, beta, lams(ll),L, eta, PGsteps, PGtol, true);
                 
 
                 % Update theta using the projected solution.
@@ -255,19 +286,10 @@ for f = 1 : folds
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         % Validation scores.
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-        %nnz(B)
-        if  (1<= stats.l0) && (stats.l0 <= q*p*feat) 
-        
-%         if  (1<= stats.l0 <= q*p*feat)% if fraction nonzero features less than feat.
-            fprintf('Sparse enough. Use MC as score. \n')
+        if  (1<= stats.l0) && (stats.l0 <= q*p*feat)         
             % Use misclassification rate as validation score.
             scores(f, ll) = mc(f, ll);
-            %         elseif nnz(B) < 0.5; % Found trivial solution.
-            %             %fprintf('dq \n')
-            %             scores(f, 11) = 10000; % Disqualify with maximum possible score.
         elseif (stats.l0 > q*p*feat) % Solution is not sparse enough, use most sparse as measure of quality instead.
-            fprintf('Not sparse enough. Use cardinality as score. \n')
-            
             scores(f, ll) = stats.l0;
         end
 
@@ -302,22 +324,19 @@ avg_score = mean(scores);
 % choose lambda with best average score (break ties by taking largest ->
 % most sparse discriminant vector).
 
-% minidx = find(avg_score == minscore);
-% lbest = max(minidx);
 minscore = min(avg_score);
 lbest = find(avg_score == minscore, 1, 'last');
-
-% [~, lbest] = min(avg_score);
-
-
 lambest = lams(lbest);
 
 
 %% Solve with lambda = lam(lbest).
+
+% Finished training lambda.
+fprintf('Finished Training: lam = %d \n', lambest)
 
 % Use full training set.
 Xt = X(1:(n-pad), :);
 Xt = normalize(Xt);
 Yt = Y(1:(n-pad), :);
 
-[B,Q] = SDAAPbt(Xt, Yt, Om, gam, lams(lbest),L, eta,  q, PGsteps, PGtol, maxits, tol);
+[B,Q] = SDAAPbt(Xt, Yt, Om, gam, lams(lbest),L, eta,  q, PGsteps, PGtol, maxits, tol, true);

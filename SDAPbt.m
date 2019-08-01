@@ -1,11 +1,10 @@
-function [B,Q, subits, totalits] = SDAPbt(Xt, Yt, Om, gam, lam, L, eta, q, PGsteps, PGtol, maxits, tol)
-% Applies accelerated proximal gradient algorithm 
+function [B,Q, subits, totalits] = SDAPbt(Xt, Yt, Om, gam, lam, L, eta, q, PGsteps, PGtol, maxits, tol, quiet)
+% SDAPBT PG with backtracking line search for SOS.
+% Applies proximal gradient algorithm (with backtracking)
 % to the optimal scoring formulation of
 % sparse discriminant analysis proposed by Clemmensen et al. 2011.
-%
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% INPUT.
 % Xt: n by p data matrix.
 % Yt: n by K matrix of indicator variables (Yij = 1 if i in classs j)
 % Om: p by p parameter matrix Omega in generalized elastic net penalty.
@@ -18,12 +17,11 @@ function [B,Q, subits, totalits] = SDAPbt(Xt, Yt, Om, gam, lam, L, eta, q, PGste
 % PGtol: stopping tolerance for inner APG method.
 % maxits: number of iterations to run alternating direction alg.
 % tol: stopping tolerance for alternating direction algorithm.
-
+% quiet: toggle display of intermediate output.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Output
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% B: p by q by nlam matrix of discriminant vectors.
-% Q: K by q by nlam matrix of scoring vectors.
+% OUTPUT.
+% B: p by q  matrix of discriminant vectors.
+% Q: K by q  matrix of scoring vectors.
 % subits, totalits: number of inner and outer loop iterations.
 
 
@@ -100,7 +98,7 @@ for j = 1:q
         % Update beta using proximal gradient step.
         b_old = beta;
 
-        [beta, steps]  = prox_ENbt(A, d, beta, lam, L, eta, PGsteps, PGtol);
+        [beta, steps]  = prox_ENbt(A, d, beta, lam, L, eta, PGsteps, PGtol, quiet);
         subits = subits + steps;
 
         
@@ -117,10 +115,16 @@ for j = 1:q
         % Progress.
         db = norm(beta-b_old)/norm(beta);
         dt = norm(theta-t_old)/norm(theta);
-        %fprintf('It %5.0f      db %5.2f      dt %5.2f      Subprob its %5.0f It time %5.2f\n', its, db, dt, subprob_its, update_time)
+        if quiet == false
+            fprintf('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
+            fprintf('OutIt: %1.2d \t + db %1.2e \t\t + dt %5.2e \n', its, db, dt)            
+        end
         
         % Check convergence.
         if max(db, dt) <= tol             % Converged.
+            if quiet == false
+                fprintf('Found discriminant vector %d after %d iterations.\n', j, its)
+            end
             totalits(j) = its;
             break
         end

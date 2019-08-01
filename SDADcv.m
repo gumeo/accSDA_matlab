@@ -1,14 +1,12 @@
 function [B, Q, lbest, lambest,scores] = SDADcv(train, folds, Om, gam, lams, mu, q, PGsteps, PGtol, maxits, tol, feat, quiet)
-
+% SDADcv admm with cross validation for the SOS problem.
 % Applies alternating direction method of multipliers with cross validation
 % to the optimal scoring formulation of
 % sparse discriminant analysis proposed by Clemmensen et al. 2011.
 %
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% train,val.Y: n by K matrix of indicator variables (Yij = 1 if i in classs j)
-% theta0: initial solution.
+% INPUT.
+% train.X, train.Y: training data.
 % folds: number of folds to use in K-fold cross-validation.
 % Om: p by p parameter matrix Omega in generalized elastic net penalty.
 % gam > 0: regularization parameter for elastic net penalty.
@@ -21,8 +19,7 @@ function [B, Q, lbest, lambest,scores] = SDADcv(train, folds, Om, gam, lams, mu,
 % feat: maximum fraction of nonzero features desired in validation scheme.
 % quiet: if 1 does not display intermediate stats.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Output
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% OUTPUT.
 % B: p by q by nlam matrix of discriminant vectors.
 % Q: K by q by nlam matrix of scoring vectors.
 % best_ind: index of best solution in [B,Q].
@@ -85,18 +82,22 @@ scores = q*p*ones(folds, nlam);
 % Misclassification rate for each classifier.
 mc = zeros(folds, nlam);
 
+% Save Om.
+Omold = Om;
+
 for f = 1 : folds
 
     %% Initialization.
     % Extract X and Y from train.
     Xt = X(tinds, :);
     Yt = Y(tinds, :);
-    [Xt, mut, sigt] = normalize(Xt);
+    [Xt, mut, sigt, ft] = normalize(Xt);
+    Om = Omold(ft,ft);
 
     % Extract training data.
     Xv = X(vinds, :);
 %     Yv = Y(vinds, :);
-    Xv = normalize_test(Xv, mut, sigt);
+    Xv = normalize_test(Xv, mut, sigt, ft);
     
     % Get dimensions of training matrices.
     [nt, p] = size(Xt);
@@ -139,9 +140,9 @@ for f = 1 : folds
     %% Validation Loop.
 
     if (quiet == 0)
-        fprintf('++++++++++++++++++++++++++++++++++++\n')
+        fprintf('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
         fprintf('Fold %d \n', f)
-        fprintf('++++++++++++++++++++++++++++++++++++\n')
+        fprintf('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
     end
     %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     % Loop through potential regularization parameters.
@@ -160,7 +161,6 @@ for f = 1 : folds
         % Call Alternating Direction Method to solve SDA.
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         % For j=1,2,..., q compute the SDA pair (theta_j, beta_j).
-        %[f, lams(ll)]
         for j = 1:q
 
             %+++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -175,7 +175,6 @@ for f = 1 : folds
 
             % Initialize theta.
             theta = Mj(rand(K,1));
-            %theta = Mj(theta0);
             theta = theta/sqrt(theta'*D*theta);
 
             % Initialize coefficient vector for elastic net step.
@@ -233,7 +232,6 @@ for f = 1 : folds
                 % Check convergence.
                 if max(db, dt) < tol
                     % Converged.
-                    %fprintf('Algorithm converged for %g iterations\n', j)
                     break
                 end
             end %its
@@ -255,17 +253,9 @@ for f = 1 : folds
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
         if  (1<= stats.l0) && (stats.l0 <= q*p*feat) 
-        
-%         if  (1<= stats.l0 <= q*p*feat)% if fraction nonzero features less than feat.
-            fprintf('Sparse enough. Use MC as score. \n')
             % Use misclassification rate as validation score.
             scores(f, ll) = mc(f, ll);
-            %         elseif nnz(B) < 0.5; % Found trivial solution.
-            %             %fprintf('dq \n')
-            %             scores(f, 11) = 10000; % Disqualify with maximum possible score.
         elseif (stats.l0 > q*p*feat) % Solution is not sparse enough, use most sparse as measure of quality instead.
-            fprintf('Not sparse enough. Use cardinality as score. \n')
-            
             scores(f, ll) = stats.l0;
         end
 
@@ -295,7 +285,7 @@ end % folds.
 
 %%  Find best solution.
 
-fprintf('Finished training, choosing lambda.\n')
+
 % average CV scores.
 avg_score = mean(scores);
 
@@ -307,14 +297,16 @@ lambest = lams(lbest);
 
 %% Solve with lambda = lam(lbest).
 
-%fprintf('Solving with best lambda.\n')
+% Finished training lambda.
+fprintf('Finished Training: lam = %d \n', lambest)
+
 % Use full training set.
 Xt = train.X;
 Yt = train.Y;
 Xt = normalize(Xt);
 
 % Solve for B & Q.
-[B, Q] = SDAD(Xt, Yt, Om, gam, lambest, mu, q, PGsteps, PGtol, maxits, tol, 1);
+[B, Q] = SDAD(Xt, Yt, Omold, gam, lambest, mu, q, PGsteps, PGtol, maxits, tol, 1);
 
 
 

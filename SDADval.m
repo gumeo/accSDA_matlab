@@ -1,11 +1,11 @@
 function [B, Q, best_ind, scores] = SDADval(train, val, Om, gam, lams, mu, q, PGsteps, PGtol, maxits, tol, feat, quiet)
+% SDADVAL % admm with validation for the SOS problem.
 % Applies alternating direction method of multipliers with validation
 % to the optimal scoring formulation of
 % sparse discriminant analysis proposed by Clemmensen et al. 2011.
 %
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% INPUT.
 % train,val.Y: n by K matrix of indicator variables (Yij = 1 if i in classs j)
 % train,val.X: n by p data matrix.
 % Om: p by p parameter matrix Omega in generalized elastic net penalty.
@@ -19,8 +19,7 @@ function [B, Q, best_ind, scores] = SDADval(train, val, Om, gam, lams, mu, q, PG
 %
 % feat: maximum fraction of nonzero features desired in validation scheme.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Output
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% OUTPUT.
 % B: p by q by nlam matrix of discriminant vectors.
 % Q: K by q by nlam matrix of scoring vectors.
 % best_ind: index of best solution in [B,Q].

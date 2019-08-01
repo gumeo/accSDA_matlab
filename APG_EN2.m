@@ -1,11 +1,10 @@
-function [x, k] = APG_EN2(A, d, x0, lam, alpha,  maxits, tol)
-
+function [x, k] = APG_EN2(A, d, x0, lam, alpha,  maxits, tol, quiet)
+% APG_EN2 - accelerated proximal gradient method for SOS problem.
 % Applies accelerated proximal gradient algorithm to the l1-regularized quad
 %   f(x) + g(x) = 0.5*x'*A*x - d'*x + lam*l1(x).
 %
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% INPUT.
 % A: p by p positive definite coefficient matrix 
 %       A = 2(gamma*Om + X'X/n).
 % d: p dim coefficient vector.
@@ -13,10 +12,9 @@ function [x, k] = APG_EN2(A, d, x0, lam, alpha,  maxits, tol)
 % alpha: step length.
 % maxits: number of iterations to run prox grad alg.
 % tol: stopping tolerance for prox grad algorithm.
-%
+% quiet: toggle display of intermediate output.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Output
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% OUTPUT.
 % x: solution at termination.
 % k: number of iterations performed.
 
@@ -43,11 +41,14 @@ else
     df = @(x) A.A*x - d;
 end
 
-
-
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Outer loop: Repeat until converged or max # of iterations reached.
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+if quiet == false
+    fprintf('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
+    fprintf('InIt \t + inf(df) - lam \t + inf(err) \n')
+    fprintf('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
+end
 for k = 0:maxits
     
     
@@ -79,12 +80,21 @@ for k = 0:maxits
     end
     
     %----------------------------------------------------------------
+    % Print optimality condition violation.
+    %----------------------------------------------------------------    
+     if (k <=2 || mod(k,10) == 0) && quiet==false
+      fprintf('%3g \t +  %1.2e \t\t +  %1.2e \n', k, (norm(dfx, inf) - lam)/p, norm(err, inf)/p)
+    end
+    
+    %----------------------------------------------------------------
     % Check stopping criteria -df(x) in subdiff g(x).
     %   Need inf(df) < lam + tol, inf(err) < tol.
     %----------------------------------------------------------------
     if max(norm(dfx, inf) - lam, norm(err, inf)) < tol*p
         % CONVERGED!!!
-%         fprintf('Subproblem converged after %g iterations\n\n\n', k)
+        if quiet==false
+            fprintf('Subproblem converged after %g iterations\n', k)
+        end
 
         break
     else

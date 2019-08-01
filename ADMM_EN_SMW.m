@@ -1,15 +1,14 @@
 function [x,y,z, k] = ADMM_EN_SMW(Ainv, V,R, d, x0, lam, mu, maxits, tol, quiet)
-
+% ADMM_EN_SMW admm for SOS elastic net problem using SMW lemma.
 % Applies Alternating Direction Method of Multipliers to the l1-regularized
 % quadratic program
 %   f(x) + g(x) = 0.5*x'*A*x - d'*x + lam*l1(x).
-%
+% Uses Sherman-Morrison-Woodbury identity to update x.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Input
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% A: n by n positive definite coefficient matrix
 % Ainv: diagonal of A^{-1} term in SMW formula.
-% VAinv: V*A^{-1} = (A^{-1}U)' product in SMW formula.
+% V: V*A^{-1} = (A^{-1}U)' product in SMW formula.
 % R: upper triangular matrix in Chol decomp of I + U*Ainv*V.
 % d: n dim coefficient vector.
 % lam > 0: regularization parameter for l1 penalty.
@@ -17,7 +16,7 @@ function [x,y,z, k] = ADMM_EN_SMW(Ainv, V,R, d, x0, lam, mu, maxits, tol, quiet)
 % alpha: step length.
 % maxits: number of iterations to run.
 % tol = [tol.abs, tol.rel]: stopping tolerances.
-% quiet = controls display of it'n statistics.
+% quiet = control display of intermediate statistics.
 %
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Output
@@ -38,6 +37,11 @@ z = zeros(p,1);
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Outer loop: Repeat until converged or max # of iterations reached.
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+if quiet == false
+    fprintf('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
+    fprintf('InIt \t\t + pgap \t\t + dgap \t\t + norm(dvs) \n')
+    fprintf('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
+end
 for k = 0:maxits
     
     %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -93,16 +97,17 @@ for k = 0:maxits
     
     
     % Display current iteration stats.
-    if (quiet==0 && mod(k,5) ==0)
-        fprintf('it = %g, primal_viol = %3.2e | %3.2e , dual_viol = %3.2e | %3.2e, norm_y = %3.2e\n', k, dr, ep, ds, es, max(norm(x), norm(y)))
+      if (k <=2 || mod(k,10) == 0) && quiet==false
+        fprintf('%3g \t\t + %1.2e \t +  %1.2e \t + %1.2e \n', k, dr-ep, ds-es, max(norm(x), norm(y)))
     end
     
     
     % Check if the residual norms are less than the given tolerance.
     if (dr < ep && ds < es)
         % CONVERGED.
-%         fprintf('Subproblem converged after %g iterations\n', k);
-
+        if quiet==false
+            fprintf('Subproblem converged after %g iterations\n', k)
+        end
         break % The algorithm has converged.
     end
 end

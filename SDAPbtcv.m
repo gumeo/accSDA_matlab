@@ -1,12 +1,10 @@
 function [B, Q, lbest, lambest,scores] = SDAPbtcv(train, folds, Om, gam, lams, L, eta, q, PGsteps, PGtol, maxits, tol, feat, quiet)
-
-% Applies proximal gradient algorithm with cross validation
-% to the optimal scoring formulation of
+% SDAPBTCV PG with backtracking line search and cross validation for SOS.
+% Applies proximal gradient algorithm with cross validation and
+% backtracking line search to the optimal scoring formulation of
 % sparse discriminant analysis proposed by Clemmensen et al. 2011.
-%
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% INPUT.
 % train.X: n by p data matrix.
 % train.Y: n by K matrix of indicator variables (Yij = 1 if i in classs j)
 % folds: number of folds to use in K-fold cross-validation.
@@ -20,11 +18,12 @@ function [B, Q, lbest, lambest,scores] = SDAPbtcv(train, folds, Om, gam, lams, L
 % feat: maximum fraction of nonzero features desired in validation scheme.
 % quiet: toggles display of iteration stats.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Output
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% B: p by q by nlam matrix of discriminant vectors.
-% Q: K by q by nlam matrix of scoring vectors.
-% best_ind: index of best solution in [B,Q].
+% OUTPUT.
+% B: p by q matrix of discriminant vectors.
+% Q: K by q  matrix of scoring vectors.
+% lbest: index of best regularization paramter.
+% lambest: best lambda parameter.
+% scores: matrix of scores.
 
 
 %% Initialize training sets, etc.
@@ -87,6 +86,8 @@ scores = q*p*ones(folds, nlam);
 % Misclassification rate for each classifier.
 mc = zeros(folds, nlam);
 
+% Save Om.
+Omold = Om;
 
 for f = 1 : folds
 
@@ -94,12 +95,13 @@ for f = 1 : folds
 
     % Extract X and Y from train.
     Xt = X(tinds, :);
-    [Xt, mut, sigt] = normalize(Xt);
+    [Xt, mut, sigt,ft] = normalize(Xt);
+    Om = Omold(ft,ft);
     Yt = Y(tinds, :);
 
     % Extract validation data.
     Xv = X(vinds, :);
-    Xv = normalize_test(Xv, mut, sigt);    
+    Xv = normalize_test(Xv, mut, sigt, ft);    
     % Get dimensions of training matrices.
     [nt, p] = size(Xt);
 
@@ -117,11 +119,10 @@ for f = 1 : folds
     %% Validation Loop.
 
     if (quiet == 0)
-        fprintf('++++++++++++++++++++++++++++++++++++\n')
+        fprintf('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
         fprintf('Fold %d \n', f)
-        fprintf('++++++++++++++++++++++++++++++++++++\n')
+        fprintf('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
     end
-    
     % Initialize B.
     B = zeros(p, q, nlam);
     %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -190,7 +191,7 @@ for f = 1 : folds
                 % Update beta using proximal gradient step.
                 b_old = beta;
 
-                [beta, ~] = prox_ENbt(A, d, beta, lams(ll), L, eta, PGsteps, PGtol);
+                [beta, ~] = prox_ENbt(A, d, beta, lams(ll), L, eta, PGsteps, PGtol, true);
 
 
                 % Update theta using the projected solution.
@@ -220,7 +221,7 @@ for f = 1 : folds
             B(:,j, ll) = beta;
         end
 
-        %
+        
 
         %%
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -231,17 +232,13 @@ for f = 1 : folds
         stats = predict(B(:,:,ll), [labs(vinds), Xv], C');
         mc(f, ll) = stats.mc;
         
-        if  (1<= stats.l0) && (stats.l0 <= q*p*feat) 
-        
-%         if  (1<= stats.l0 <= q*p*feat)% if fraction nonzero features less than feat.
-            fprintf('Sparse enough. Use MC as score. \n')
+        if  (1<= stats.l0) && (stats.l0 <= q*p*feat)         
             % Use misclassification rate as validation score.
             scores(f, ll) = mc(f, ll);
             %         elseif nnz(B) < 0.5; % Found trivial solution.
             %             %fprintf('dq \n')
             %             scores(f, 11) = 10000; % Disqualify with maximum possible score.
-        elseif (stats.l0 > q*p*feat) % Solution is not sparse enough, use most sparse as measure of quality instead.
-            fprintf('Not sparse enough. Use cardinality as score. \n')
+        elseif (stats.l0 > q*p*feat) % Solution is not sparse enough, use most sparse as measure of quality instead.        
             
             scores(f, ll) = stats.l0;
         end
@@ -316,6 +313,6 @@ Yt = Y(1:(n-pad), :);
 % lbest
 % size(Yt)
 
-[B,Q] = SDAPbt(Xt, Yt, Om, gam, lams(lbest),L, eta,  q,  PGsteps, PGtol, maxits, tol);
+[B,Q] = SDAPbt(Xt, Yt, Omold, gam, lams(lbest),L, eta,  q,  PGsteps, PGtol, maxits, tol, true);
 
 % fprintf('Found DVs\n')

@@ -1,12 +1,11 @@
 function [x,y,z, k] = ADMM_EN2(R, d, x0, lam, mu, maxits, tol, quiet)
-
+% ADMM_EN2 admm for SOS elastic net problem using SMW lemma.
 % Applies Alternating Direction Method of Multipliers to the l1-regularized
 % quadratic program
 %   f(x) + g(x) = 0.5*x'*A*x - d'*x + lam*l1(x).
 %
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% INPUT.
 % A: n by n positive definite coefficient matrix
 % R: upper triangular matrix in Chol decomp muI + A = R'*R;
 % d: n dim coefficient vector.
@@ -16,10 +15,8 @@ function [x,y,z, k] = ADMM_EN2(R, d, x0, lam, mu, maxits, tol, quiet)
 % maxits: number of iterations to run.
 % tol = [tol.abs, tol.rel]: stopping tolerances.
 % quiet = control display of intermediate statistics.
-%
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Output
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% OUTPUT.
 % (x, y,z): solution at termination.
 % k: number of iterations needed.
 
@@ -36,6 +33,11 @@ z = zeros(p,1);
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Outer loop: Repeat until converged or max # of iterations reached.
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+if quiet == false
+    fprintf('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
+    fprintf('InIt \t\t + pgap \t\t + dgap \t\t + norm(dvs) \n')
+    fprintf('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
+end
 for k = 0:maxits
     
     %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -87,12 +89,17 @@ for k = 0:maxits
     es = sqrt(p)*tol.abs + tol.rel*norm(y);
     
     % Display current iteration stats.
-    if (quiet==0)
-        fprintf('it = %g, primal_viol = %3.2e, dual_viol = %3.2e, norm_y = %3.2e\n', k, dr-ep, ds-es, max(norm(x), norm(y)))
+    if (k <=2 || mod(k,10) == 0) && quiet==false
+        fprintf('%3g \t\t + %1.2e \t +  %1.2e \t + %1.2e \n', k, dr-ep, ds-es, max(norm(x), norm(y)))
     end
+    
     
     % Check if the residual norms are less than the given tolerance.
     if (dr < ep && ds < es)
+         % CONVERGED!!!
+        if quiet==false
+            fprintf('Subproblem converged after %g iterations\n', k)
+        end
         break % The algorithm has converged.
     end
 end

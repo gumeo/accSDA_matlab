@@ -1,11 +1,11 @@
-function [x, k, L] = prox_ENbt(A, d, x0, lam,L, eta, maxits, tol)
-
-% Applies proximal gradient algorithm to the l1-regularized quad
+function [x, k, L] = prox_ENbt(A, d, x0, lam,L, eta, maxits, tol, quiet)
+% PROX_ENBT proximal gradient method for the SOS problem.
+% Applies proximal gradient algorithm to the l1-regularized quadratic
+% program for SOS problem.
 %   f(x) + g(x) = 0.5*x'*A*x - d'*x + lam*l1(x).
-%
+% Uses backtracking line search.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% INPUT.
 % A: n by n positive definite coefficient matrix
 % d: n dim coefficient vector.
 % lam > 0: regularization parameter for l1 penalty.
@@ -13,10 +13,9 @@ function [x, k, L] = prox_ENbt(A, d, x0, lam,L, eta, maxits, tol)
 % eta > 1: scaling parameter for backtracking.
 % maxits: number of iterations to run prox grad alg.
 % tol: stopping tolerance for prox grad algorithm.
-%
+% quiet: toggle display of intermediate output.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Output
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% OUTPUT.
 % x: solution at termination.
 % k: number of iterations performed.
 % L: step length/approximate Lipschitz constant.
@@ -33,6 +32,12 @@ n = length(x);
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Outer loop: Repeat until converged or max # of iterations reached.
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+if quiet == false
+    fprintf('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
+    fprintf('InIt \t + inf(df) - lam \t + inf(err) \n')
+    fprintf('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
+end
 for k = 0:maxits
     
     %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -66,9 +71,9 @@ for k = 0:maxits
     %----------------------------------------------------------------
     % Print optimality condition violation.
     %----------------------------------------------------------------    
-%     if (k <=2 || mod(k,10) == 0)
-%         fprintf('it = %g   inf(df) - lam = %3.2e   inf(err) = %3.2e f = %3.2e\n', k, (norm(df, inf) - lam)/n, norm(err, inf)/n, 0.5*x'*A*x - d'*x + lam*norm(x,1))
-%     end
+    if (k <=2 || mod(k,10) == 0) && quiet==false
+      fprintf('%3g \t +  %1.2e \t\t +  %1.2e \n', k, (norm(df, inf) - lam)/n, norm(err, inf)/n)
+    end
     
     %----------------------------------------------------------------
     % Check stopping criteria -df(x) in subdiff g(x).
@@ -76,8 +81,10 @@ for k = 0:maxits
     %----------------------------------------------------------------
     if max(norm(df, inf) - lam, norm(err, inf)) < tol*n
         % CONVERGED!!!
-%         fprintf('Subproblem converged after %g iterations\n\n\n', k);
-        
+        if quiet == false
+            fprintf('Subproblem converged after %g iterations\n', k);
+        end
+   
         break
     else
         % Update x using soft-thresholding and backtracking.      
