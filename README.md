@@ -24,5 +24,20 @@ You can train sparse discriminant vectors using the Matlab function `ASDA`, call
 ASDAres = ASDA(X, Y, Om, gam, lam, cv, method, q, insteps, outsteps, intol, outtol, quiet, opts)
 ```
 The function `ASDA` performs block coordinate descent to solve the sparse optimal scoring problem to train discriminant vectors as described in the paper [Proximal Methods for Sparse Optimal Scoring and Discriminant Analysis](https://arxiv.org/pdf/1705.07194.pdf). The function requires the following input arguments
->> * `X` training data matrix, with rows containing observations. This data must be standardized so that each predictor feature, i.e., column, has sample mean 0 and variance 1. We have provided the Matlab function `normalize` to standardize data if needed.
-* `Y` training data class indicator matrix. This is a binary matrix with (i,j) entry equal to 1 if observation i belongs to class j and 0 otherwise.
+* `X` a n x p training data matrix, with rows containing n observations of p-dimensional data vectors. This data must be standardized so that each predictor feature, i.e., column, has sample mean 0 and variance 1. We have provided the Matlab function `normalize` to standardize data if needed.
+* `Y` a n x k training data class indicator matrix, where k is the number of unique class labels. This is a binary matrix with (i,j) entry equal to 1 if observation i belongs to class j and 0 otherwise.
+* `Om` a p x p positive semidefinite matrix controlling the generalized Tikhonov regularization function in the sparse optimal scoring problem. We suggest using the identity matrix unless a domain-specific regularization is needed.
+* `gam` a positive scalar giving the weight of the Tikhonov regularization penalty.
+* `lam` defines the weight of the l_1 penalty term in the sparse optimal scoring problem. If `cv` is `true` then `lam` is a vector of positive scalars to be compared using cross validation. If `cv` is `false` then `lam` is a positive scalar giving the weight of the penalty term.
+* `cv` a logical variable indicating whether to use cross validation to train the weight of the l_1 norm penalty.
+* `method` a string indicating the method to be used to solve the $\beta$-update subproblem:
+  String | Method
+  ------ | ------
+  `"PG"` | proximal gradient method.
+  `"APG"` | accelerated proximal gradient method
+  `"ADMM"` | alternating direction method of multipliers
+* `q` integer between 1 and k-1, indicating how many discriminant vectors to calculate.
+* `insteps`, `outsteps` are positive integers indicating the number of iterations to be performed in the inner loop for subproblem solution and the outer loop, respectively, of the block coordinate descent algorithm.
+* `intol`, `outtol` are positive scalars indicating stopping tolerance for the inner and outer loops, respectively, of the block coordinate descent algorithm.
+* `quiet` a logical variable indicating whether to display intermediate output.
+* `opt` a structured list variable providing any additional solver-dependent arguments.
