@@ -62,13 +62,15 @@ If using cross validation (`cv = true`) to train λ, you must provide the follow
 # An example: Coffee spectrograms.
 
 The following is a simple example using the Coffee data set from the [UCR Time Series Classification Archive](https://www.cs.ucr.edu/%7Eeamonn/time_series_data_2018/).
-The training set consists of *n=28* spectrographic observations of either *arabica* or *robusta* variants of instant coffee, each containing *p=286* feature variables. We include a standardized version of this data set in the fold `Data` in the repository as the file `Coffee.mat`
-Here, we use the accelerated proximal gradient method with backtracking and with cross valiation; we'll discuss the usage of other methods later.
+The training set consists of *n=28* spectrographic observations of either *arabica* or *robusta* variants of instant coffee, each containing *p=286* feature variables. We include a standardized version of this data set in the fold `Data` in the repository as the file `Coffee.mat`.
+
+
+We first define input arguments. Here, we use the accelerated proximal gradient method with backtracking and with cross validation; we'll discuss the usage of other methods later.
 
 ```Matlab
 
 % Load data set.
-load(`Data\Coffee.mat`)
+load('Data\Coffee.mat')
 
 % Define required parameters.
 p = 286; % Predictor variable sizes.
@@ -93,7 +95,40 @@ opts.eta = 1.25; % scaling factor for BT.
 cv = true;
 opts.folds = 7; % Use 7-fold CV as in paper.
 opts.feat = 0.15; % Want classifiers using 15% of features.
+```
+
+After defining all input arguments, we are ready to solve for the discriminant vectors.
+
+```Matlab
 
 % Call ASDA.
 ASDAres = ASDA(X, Y, Om, gam, lam, cv, method, q, insteps, outsteps, intol, outtol, quiet, opts)
 ```
+The `ASDAres` object contains the calculated discriminant vector, scoring vector, and additional data from the cross validation process. We can plot the discriminant vector using the command
+```Matlab
+plot(ASDAres.B)
+```
+which yields the following plot. (This may look slightly different when you run the code due to inherent variation in the cross validation scheme and due to random initialization of the scoring vectors.)
+
+![Image of discriminant vector for Coffee data](./Examples/coffeedvs.png)
+
+
+We can test performance of our classifiers using the `predict` function. We use the following code to do so:
+```Matlab
+% First calculate centroid matrix of training data.
+C = diag(1./diag(Y'*Y))*Y'*X;
+
+
+% Call predict to calculate accuracy on testing data.
+% Note: predict requires matrix with class centroids as columns.
+stats = predict(ASDAres.B, test, C')
+```
+
+This yields the following table containing proportion of misclassified testing observations and total cardinality of discriminant vectors.
+
+Statistic | Value
+-----|--------
+Misclassification Rate | 0
+Cardinality | 33
+
+(Again, these values may change depending on which value of λ is chosen during cross validation.)
