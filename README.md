@@ -29,15 +29,21 @@ The function `ASDA` performs block coordinate descent to solve the sparse optima
 * `Om` a p x p positive semidefinite matrix controlling the generalized Tikhonov regularization function in the sparse optimal scoring problem. We suggest using the identity matrix unless a domain-specific regularization is needed.
 * `gam` a positive scalar giving the weight of the Tikhonov regularization penalty.
 * `lam` defines the weight of the l_1 penalty term in the sparse optimal scoring problem. If `cv` is `true` then `lam` is a vector of positive scalars to be compared using cross validation. If `cv` is `false` then `lam` is a positive scalar giving the weight of the penalty term.
-* `cv` a logical variable indicating whether to use cross validation to train the weight of the l_1 norm penalty.
-* `method` a string indicating the method to be used to solve the $\beta$-update subproblem:
-  String | Method
-  ------ | ------
-  `"PG"` | proximal gradient method.
-  `"APG"` | accelerated proximal gradient method
-  `"ADMM"` | alternating direction method of multipliers
+* `cv` a logical variable indicating whether to use cross validation to train the weight of the l1 norm penalty.
+* `method` a string indicating the method to be used to solve the β-update subproblem:
+  * `"PG"` proximal gradient method,
+  * `"APG"`  accelerated proximal gradient method, or
+  * `"ADMM"` alternating direction method of multipliers
 * `q` integer between 1 and k-1, indicating how many discriminant vectors to calculate.
 * `insteps`, `outsteps` are positive integers indicating the number of iterations to be performed in the inner loop for subproblem solution and the outer loop, respectively, of the block coordinate descent algorithm.
 * `intol`, `outtol` are positive scalars indicating stopping tolerance for the inner and outer loops, respectively, of the block coordinate descent algorithm.
 * `quiet` a logical variable indicating whether to display intermediate output.
 * `opt` a structured list variable providing any additional solver-dependent arguments.
+
+The function `ASDA` returns a structured list `ASDAres` containing
+* `ASDAres.B` a p x q matrix with columns containing the discriminant vectors calculated by the block coordinate descent method.
+* `ASDAres.Q` a k x q matrix with columns containing the optimal scoring vectors.
+If `cv = true` then the additional values are returned:
+* `ASDAres.bestind`, which is the index of the value of `lam` chosen by cross validation,
+* `ASDAres.bestlam`, which is the value of `lam` chosen by cross validation,
+* `ASDAres.cvscores`, which is the matrix of cross validation scores for all folds and possible choices of parameter λ in `lam`.
