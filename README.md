@@ -18,3 +18,8 @@ This package includes functions that allow you to train such a classifier in a s
 You can use the package immediately after adding the folder containing all function files to your Matlab path.
 
 # Usage
+
+You can train sparse discriminant vectors using the Matlab function `ASDA`, called command:
+```Matlab
+ASDAres = ASDA(X, Y, Om, gam, lam, cv, method, q, insteps, outsteps, intol, outtol, quiet, opts)
+```
