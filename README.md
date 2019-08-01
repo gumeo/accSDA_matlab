@@ -65,7 +65,7 @@ The following is a simple example using the Coffee data set from the [UCR Time S
 The training set consists of *n=28* spectrographic observations of either *arabica* or *robusta* variants of instant coffee, each containing *p=286* feature variables. We include a standardized version of this data set in the fold `Data` in the repository as the file `Coffee.mat`.
 
 
-We first define input arguments. Here, we use the accelerated proximal gradient method with backtracking and with cross valiation; we'll discuss the usage of other methods later.
+We first define input arguments. Here, we use the accelerated proximal gradient method with backtracking and with cross validation; we'll discuss the usage of other methods later.
 
 ```Matlab
 
@@ -111,7 +111,7 @@ plot(ASDAres.B)
 which yields the following plot. (This may look slightly different when you run the code due to inherent variation in the cross validation scheme and due to random initialization of the scoring vectors.)
 
 ![Image of discriminant vector for Coffee data]
-(https://github.com/gumeo/accSDA_matlab/blob/master/coffeedvs.png)
+(coffeedvs.png)
 
 We can test performance of our classifiers using the `predict` function. We use the following code to do so:
 ```Matlab
