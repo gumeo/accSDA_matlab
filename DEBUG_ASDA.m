@@ -22,13 +22,13 @@ lam = [1e-4; 1e-3; 1e-2; 1e-1];
 
 cv = true;
 
-method = "APG";
-opts.q = 1;
-opts.insteps = 1500;
-opts.outsteps = 10;
-opts.intol = 1e-7;
-opts.outtol = 1e-4;
-opts.quiet = false;
+method = "PG";
+q = 1;
+insteps = 1500;
+outsteps = 10;
+intol = 1e-7;
+outtol = 1e-4;
+quiet = false;
 opts.bt = true;
 opts.L = 0.25;
 opts.eta = 1.25;
@@ -37,8 +37,17 @@ opts.feat = 0.25;
 opts.folds = 5;
 
 %% Calculate DVs. 
-[B,Q] = ASDA(Xt,Yt, Om, gam, lam, cv, method, opts);
-plot(B);
+res = ASDA(Xt,Yt, Om, gam, lam, cv, method,q, insteps, outsteps, intol, outtol, quiet,opts);
+
+%%
+plot(res.B);
+res.Q;
+if cv == true
+    res.bestind
+    res.bestlam
+    [lam'; res.cvscores]
+end
+
 
 %% 
 scatterplot(Xt*B)

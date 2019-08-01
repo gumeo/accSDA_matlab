@@ -1,4 +1,4 @@
-function [B, Q] = ASDA(X, Y, Om, gam, lam, cv, method, opts)
+function ASDAres = ASDA(X, Y, Om, gam, lam, cv, method, q, insteps, outsteps, intol, outtol, quiet, opts)
 % ASDA Block coordinate descent for sparse optimal scoring.
 % 
 % Applies accelerated proximal gradient algorithm 
@@ -14,17 +14,20 @@ function [B, Q] = ASDA(X, Y, Om, gam, lam, cv, method, opts)
 % lam > 0: regularization parameter(s) for l1 penalty.
 %   If cv = true, then this is a list of possible values.
 %   Otherwise, a single value for the regularization parameter.
+
 % cv - logical: flag whether to use cross-validation.
 % method: indicate which method to use to update beta variable. Choose from: 
+% q - integer between 1 and K-1: number of discriminant vectors to
+%       calculate.
+% insteps - positive integer: number of iterations to perform in inner loop.
+% outsteps - positive integer: number of iterations to perform in outer BCD loop.
+% intol, outtol > 0: inner and outer loop stopping tolerances.
+% quiet - logical: indicate whether to display intermediate stats.
+% method: solver for updating discriminant vectors.
 %   "PG" - proximal gradient method.
 %   "APG" - accelerate proximal gradient method.
 %   "ADMM" - alternating direction method of multipliers.
-% opts: additional arguments needed by each method.
-%   .q - integer between 1 and K-1: number of discriminant vectors to
-%       calculate.
-%   .insteps - positive integer: number of iterations to perform in inner loop.
-%   .outsteps - positive integer: number of iterations to perform in outer BCD loop.
-%   .intol, .outtol > 0: inner and outer loop stopping tolerances.
+% opts: additional optional arguments needed by each method.
 %   .folds - positive integer: if cv = true, the number of folds to use.
 %   .bt - logical: indicates to use backtracking line search if true, o/w
 %       uses constant step size. Only needed for PG/APG.
@@ -32,19 +35,22 @@ function [B, Q] = ASDA(X, Y, Om, gam, lam, cv, method, opts)
 %   .eta > 0: scaling factor in backtracking line search.
 %   .mu > 0: augmented Lagrangian penalty parameter for ADMM.
 %   .feat - in [0,1]: if cv true, the desired max cardinality of dvs.
-%   .quiet - logical: indicate whether to display intermediate stats.
+
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % OUTPUT.
 % +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% B: p by (K-1)  matrix of discriminant vectors.
-% Q: K by (K-1)  matrix of scoring vectors.
+% ASDAres - structure containing:
+% B: p by q  matrix of discriminant vectors.
+% Q: K by q  matrix of scoring vectors.
+% bestind: index of best regularization parameter (if using CV).
+% 
 
 % +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % PRELIMINARY ERROR CHECKING AND INITIALIZATION.
 % +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 % Get data size.
-[n,p] = size(X);
+[n,~] = size(X);
 [n1, K] = size(Y);
 
 % Check that Y and X have same number of observations.
@@ -53,14 +59,11 @@ if n~=n1
 end
 
 % Check if q is correct form.
-q = opts.q;
 if  floor(q)~= q || q < 1 || q > (K-1)
     error('q must be a integer between 1 and K-1.')
 end
 
 % Check if steps is in correct form.
-insteps = opts.insteps;
-outsteps = opts.outsteps;
 if floor(insteps)~=insteps || insteps < 1
     error('Inner steps must be a positive integer')
 end
@@ -70,11 +73,10 @@ if floor(outsteps)~=outsteps || outsteps < 1
 end 
 
 % Check if tolerances are in correct form.
-intol = opts.intol;
 if intol <= 0
     error('Subproblem stopping tolerance must be positive.')
 end
-outtol = opts.outtol;
+
 if outtol <= 0
     error('Stopping tolerance must be positive.')
 end
@@ -102,7 +104,7 @@ if method == "PG"  % Proximal gradient
         if opts.bt == false            
             fprintf('Proximal gradient with constant step size (PG). \n')
             % Call SDAP.
-            [B,Q] = SDAP(X,Y, Om, gam, lam, q, insteps, intol, outsteps, outtol, opts.quiet);
+            [B,Q] = SDAP(X,Y, Om, gam, lam, q, insteps, intol, outsteps, outtol, quiet);
         
         %+++++++++++++++++++++++++++++++++++
         % PGB, no CV
@@ -120,12 +122,65 @@ if method == "PG"  % Proximal gradient
             end
             
             % Call SDAPbt.
-            [B,Q] = SDAPbt(X, Y, Om, gam, lam, opts.L, opts.eta, q, insteps, intol, outsteps, outtol, opts.quiet); 
+            [B,Q] = SDAPbt(X, Y, Om, gam, lam, opts.L, opts.eta, q, insteps, intol, outsteps, outtol, quiet); 
             
-        else % opts.bt missing or not logical.
-            error('opts.bt must be logical if using proximal gradient method.')            
+        else % bt missing or not logical.
+            error('bt must be logical if using proximal gradient method.')            
         
-        end % PG, no CV              
+        end % PG, no CV   
+        
+    %+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    elseif cv == true % PG CV. 
+        % Check lam.
+        if min(lam) <= 0
+            error('Lambda must be a vector of positive real numbers if using CV.')
+        end
+        
+        % Check feat.
+        if opts.feat < 0 || opts.feat > 1
+            error('Maximum fraction of nonzero entries must be between 0 and 1.')
+        end
+        
+        % Check folds.
+        if opts.folds < 0 || opts.folds > n || opts.folds ~= floor(opts.folds)
+            error('Number of folds must be an integer between 1 and n.')
+        end
+        
+        % Prepare train.
+        train.X = X;
+        train.Y = Y;
+        
+        %+++++++++++++++++++++++++++++++++++
+        % PG, with CV, but no BT.
+        %+++++++++++++++++++++++++++++++++++
+        if opts.bt == false            
+            fprintf('Cross validation using proximal gradient with constant step size (PG). \n')
+            
+            % Call SDAP.            
+            [B, Q, lbest, lambest,scores] = SDAPcv(train, opts.folds, Om, gam, lam, q, insteps, intol, outsteps, outtol, opts.feat, quiet);
+            
+        %+++++++++++++++++++++++++++++++++++
+        % PGB, with CV and BT
+        %+++++++++++++++++++++++++++++++++++
+        elseif opts.bt == true % PGB, with CV.            
+            fprintf('Cross validation using proximal gradient with backtracking line search (PGB). \n')            
+            
+            % Check input.
+            if opts.L <=0
+                error('Initial Lipschitz constant estimate must be positive.')
+            end
+            
+            if opts.eta <= 1
+                error('Backtracking scaling factor must be > 1.')
+            end
+            
+            % Call SDAPbt.
+            [B, Q, lbest, lambest,scores] = SDAPbtcv(train, opts.folds, Om, gam, lam, opts.L, opts.eta, q, insteps, intol, outsteps, outtol, opts.feat, quiet); 
+            
+        else % bt missing or not logical.
+            error('bt must be logical if using proximal gradient method.')            
+        
+        end % if BT. 
         
     end % if cv.
     
@@ -147,7 +202,7 @@ elseif method == "APG" % Use accelerated proximal gradient.
         if opts.bt == false            
             fprintf('Accelerated proximal gradient with constant step size (APG). \n')
             % Call SDAP.
-            [B,Q] = SDAAP(X,Y, Om, gam, lam, q, insteps, intol, outsteps, outtol, opts.quiet);
+            [B,Q] = SDAAP(X,Y, Om, gam, lam, q, insteps, intol, outsteps, outtol, quiet);
         
         %+++++++++++++++++++++++++++++++++++
         % APGB, no CV
@@ -165,10 +220,10 @@ elseif method == "APG" % Use accelerated proximal gradient.
             end
             
             % Call SDAPbt.
-            [B,Q] = SDAAPbt(X, Y, Om, gam, lam, opts.L, opts.eta, q, insteps, intol, outsteps, outtol, opts.quiet); 
+            [B,Q] = SDAAPbt(X, Y, Om, gam, lam, opts.L, opts.eta, q, insteps, intol, outsteps, outtol, quiet); 
             
-        else % opts.bt missing or not logical.
-            error('opts.bt must be logical if using proximal gradient method.')            
+        else % bt missing or not logical.
+            error('bt must be logical if using proximal gradient method.')            
         
         end % if BT.            
         
@@ -200,7 +255,7 @@ elseif method == "APG" % Use accelerated proximal gradient.
             fprintf('Cross validation using accelerated proximal gradient with constant step size (APG). \n')
             
             % Call SDAAP.            
-            [B,Q] = SDAAPcv(train, opts.folds, Om, gam, lam, q, insteps, intol, outsteps, outtol, opts.feat, opts.quiet);
+            [B, Q, lbest, lambest,scores] = SDAAPcv(train, opts.folds, Om, gam, lam, q, insteps, intol, outsteps, outtol, opts.feat, quiet);
             
         %+++++++++++++++++++++++++++++++++++
         % APGB, with CV and BT
@@ -218,10 +273,10 @@ elseif method == "APG" % Use accelerated proximal gradient.
             end
             
             % Call SDAPbt.
-            [B,Q] = SDAAPbtcv(train, opts.folds, Om, gam, lam, opts.L, opts.eta, q, insteps, intol, outsteps, outtol, opts.feat, opts.quiet); 
+            [B, Q, lbest, lambest,scores] = SDAAPbtcv(train, opts.folds, Om, gam, lam, opts.L, opts.eta, q, insteps, intol, outsteps, outtol, opts.feat, quiet); 
             
-        else % opts.bt missing or not logical.
-            error('opts.bt must be logical if using proximal gradient method.')            
+        else % bt missing or not logical.
+            error('bt must be logical if using proximal gradient method.')            
         
         end % if BT. 
 
@@ -252,7 +307,7 @@ elseif method == "ADMM"
         
         % Call ADMM.
         fprintf('Alternating direction method of multipliers (ADMM).\n')
-        [B,Q] = SDAD(X, Y, Om, gam, lam, opts.mu, q, insteps, PGtol, outsteps, outtol, opts.quiet);
+        [B,Q] = SDAD(X, Y, Om, gam, lam, opts.mu, q, insteps, PGtol, outsteps, outtol, quiet);
         
     %+++++++++++++++++++++++++++++++++++++++++++++++++++++++    
     elseif cv == true % ADMM CV.
@@ -278,7 +333,7 @@ elseif method == "ADMM"
         train.Y = Y;
         
         % Call CV with ADMM.
-        [B,Q] = SDADcv(train, opts.folds, Om, gam, lam, opts.mu, q, insteps, PGtol, outsteps, outtol, opts.feat, opts.quiet);       
+        [B, Q, lbest, lambest,scores]  = SDADcv(train, opts.folds, Om, gam, lam, opts.mu, q, insteps, PGtol, outsteps, outtol, opts.feat, quiet);       
         
     else % WRONG INPUT FOR CV.
         error('CV must be logical.')      
@@ -288,7 +343,14 @@ else % Method not allowed.
     error('Not a valid method. Please choose from "PG", "APG", or "ADMM".')
 end % if method.
     
-
+% Prepare output.
+ASDAres.B = B;
+ASDAres.Q = Q;
+if cv == true
+    ASDAres.bestind = lbest;
+    ASDAres.bestlam = lambest;
+    ASDAres.cvscores = scores;    
+end
 
 
 end

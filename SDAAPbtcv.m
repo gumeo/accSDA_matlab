@@ -345,6 +345,9 @@ lambest = lams(lbest);
 
 %% Solve with lambda = lam(lbest).
 
+% Finished training lambda.
+fprintf('Finished Training: lam = %d \n', lambest)
+
 % Use full training set.
 Xt = X(1:(n-pad), :);
 Xt = normalize(Xt);

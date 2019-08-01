@@ -308,9 +308,9 @@ lambest = lams(lbest);
 
 %% Solve with lambda = lam(lbest).
 
-if quiet == false
-    fprintf('Solving with best lambda.\n')
-end
+% Finished training lambda.
+fprintf('Finished Training: lam = %d \n', lambest)
+
 % Use full training set.
 Xt = train.X;
 Yt = train.Y;

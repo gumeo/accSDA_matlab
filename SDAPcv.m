@@ -95,7 +95,7 @@ for f = 1 : folds
 
     % Extract X and Y from train.
     Xt = X(tinds, :);
-    [Xt, mut, sigt] = normalize(Xt);
+    [Xt, mut, sigt,ft] = normalize(Xt);
     Yt = Y(tinds, :);
     
     
@@ -103,7 +103,7 @@ for f = 1 : folds
 
     % Extract validation data.
     Xv = X(vinds, :);
-    Xv = normalize_test(Xv, mut, sigt);
+    Xv = normalize_test(Xv, mut, sigt,ft);
 %     fprintf('size(Xv) %d \n', size(Xv))
 %     Yv = Y(vinds, :);
     % Get dimensions of training matrices.
@@ -123,9 +123,9 @@ for f = 1 : folds
     %% Validation Loop.
 
     if (quiet == 0)
-        fprintf('++++++++++++++++++++++++++++++++++++\n')
+        fprintf('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
         fprintf('Fold %d \n', f)
-        fprintf('++++++++++++++++++++++++++++++++++++\n')
+        fprintf('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n')
     end
     
     % Initialize B and Q.
@@ -207,7 +207,7 @@ for f = 1 : folds
                 % Update beta using proximal gradient step.
                 b_old = beta;
                 
-                [beta, ~] = prox_EN(A, d, beta, lams(ll), alpha, PGsteps, PGtol);
+                [beta, ~] = prox_EN(A, d, beta, lams(ll), alpha, PGsteps, PGtol, true);
                 
 
                 % Update theta using the projected solution.
@@ -281,18 +281,15 @@ for f = 1 : folds
         % Validation scores.
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-          fprintf('stats.l0,  %d | threshold %1.3e \n', stats.l0, q*p*feat)
         if  (1<= stats.l0) && (stats.l0 <= q*p*feat) 
         
-%         if  (1<= stats.l0 <= q*p*feat)% if fraction nonzero features less than feat.
-            fprintf('Sparse enough. Use MC as score. \n')
+%         if  (1<= stats.l0 <= q*p*feat)% if fraction nonzero features less than feat.            
             % Use misclassification rate as validation score.
             scores(f, ll) = mc(f, ll);
             %         elseif nnz(B) < 0.5; % Found trivial solution.
             %             %fprintf('dq \n')
             %             scores(f, 11) = 10000; % Disqualify with maximum possible score.
-        elseif (stats.l0 > q*p*feat) % Solution is not sparse enough, use most sparse as measure of quality instead.
-            fprintf('Not sparse enough. Use cardinality as score. \n')
+        elseif (stats.l0 > q*p*feat) % Solution is not sparse enough, use most sparse as measure of quality instead.           
             
             scores(f, ll) = stats.l0;
         end
@@ -301,7 +298,7 @@ for f = 1 : folds
 
 
         % Display iteration stats.
-        if (quiet ==0)
+        if (quiet ==false)
             fprintf('ll: %3d | lam: %1.5e| feat: %d | mc: %1.5e | score: %1.5e \n', ll, lams(ll), stats.l0, mc(f, ll), scores(f, ll))
         end
 
@@ -356,6 +353,6 @@ Yt = Y(1:(n-pad), :);
 % lbest
 % size(Yt)
 
-[B,Q] = SDAP(Xt, Yt, Om, gam, lams(lbest), q, PGsteps, PGtol, maxits, tol);
+[B,Q] = SDAP(Xt, Yt, Om, gam, lams(lbest), q, PGsteps, PGtol, maxits, tol, true);
 
 % fprintf('Found DVs\n')
