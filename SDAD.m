@@ -1,12 +1,11 @@
 function [B, Q, subits, totalits] = SDAD(Xt, Yt, Om, gam, lam, mu, q, PGsteps, PGtol, maxits, tol, quiet)
-
+% SDAD admm for the SOS problem.
 % Applies alternating direction method of multipliers
 % to the optimal scoring formulation of
 % sparse discriminant analysis proposed by Clemmensen et al. 2011.
 %
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% INPUT.
 % Xt: n by p training data matrix.
 % Yt: n by K matrix of indicator variables (Yij = 1 if i in classs j)
 % folds: number of folds to use in K-fold cross-validation.
@@ -21,8 +20,7 @@ function [B, Q, subits, totalits] = SDAD(Xt, Yt, Om, gam, lam, mu, q, PGsteps, P
 % tol: stopping tolerance for outer loop.
 % quiet: toggle display of intermediate output.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Output
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% OUTPUT.
 % B: p by q by nlam matrix of discriminant vectors.
 % Q: K by q by nlam matrix of scoring vectors.
 % subits, totalits: number of inner and outer loop iterations.

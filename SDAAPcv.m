@@ -1,13 +1,12 @@
 function [B, Q, lbest, lambest,scores] = SDAAPcv(train, folds, Om, gam, lams, q, PGsteps, PGtol, maxits, tol, feat, quiet)
-
+% SDAAPCV apg with  cross validation for the SOS problem.
 % Applies accelerated proximal gradient algorithm with cross validation
 % to the optimal scoring formulation of
 % sparse discriminant analysis proposed by Clemmensen et al. 2011.
 %
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% train,val.Y: n by K matrix of indicator variables (Yij = 1 if i in classs j)
+% INPUT.
+% train: training data.
 % folds: number of folds to use in K-fold cross-validation.
 % Om: p by p parameter matrix Omega in generalized elastic net penalty.
 % gam > 0: regularization parameter for elastic net penalty.
@@ -19,8 +18,7 @@ function [B, Q, lbest, lambest,scores] = SDAAPcv(train, folds, Om, gam, lams, q,
 % feat: maximum fraction of nonzero features desired in validation scheme.
 % quiet: toggles display of iteration stats.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Output
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% OUTPUT.
 % B: p by q by nlam matrix of discriminant vectors.
 % Q: K by q by nlam matrix of scoring vectors.
 % best_ind: index of best solution in [B,Q].
@@ -88,7 +86,8 @@ scores = q*p*ones(folds, nlam);
 % Misclassification rate for each classifier.
 mc = zeros(folds, nlam);
 
-
+% Save Om.
+Omold = Om;
 
 
 for f = 1 : folds
@@ -103,6 +102,7 @@ for f = 1 : folds
     % Extract training data.
     Xv = X(vinds, :);
     Xv = normalize_test(Xv, mut, sigt, ft);
+    Om = Omold(ft,ft);
 %     Yv = Y(vinds, :);
     % Get dimensions of training matrices.
     [nt, p] = size(Xt);
@@ -349,4 +349,4 @@ Xt = X(1:(n-pad), :);
 Xt = normalize(Xt);
 Yt = Y(1:(n-pad), :);
 
-[B,Q] = SDAAP(Xt, Yt, Om, gam, lams(lbest), q, PGsteps, PGtol, maxits, tol, true);
+[B,Q] = SDAAP(Xt, Yt, Omold, gam, lams(lbest), q, PGsteps, PGtol, maxits, tol, true);

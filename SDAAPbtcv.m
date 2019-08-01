@@ -1,13 +1,12 @@
 function [B, Q, lbest, lambest,scores] = SDAAPbtcv(train, folds, Om, gam, lams, L, eta, q, PGsteps, PGtol, maxits, tol, feat, quiet)
-
+% SDAAPBTCV apg with backtracking and cross validation for the SOS problem.
 % Applies accelerated proximal gradient algorithm with cross validation
-% to the optimal scoring formulation of
+% and backtracking line search to the optimal scoring formulation of
 % sparse discriminant analysis proposed by Clemmensen et al. 2011.
 %
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% train,val.Y: n by K matrix of indicator variables (Yij = 1 if i in classs j)
+% INPUT.
+% train: training data set.
 % folds: number of folds to use in K-fold cross-validation.
 % Om: p by p parameter matrix Omega in generalized elastic net penalty.
 % gam > 0: regularization parameter for elastic net penalty.
@@ -20,8 +19,7 @@ function [B, Q, lbest, lambest,scores] = SDAAPbtcv(train, folds, Om, gam, lams, 
 % feat: maximum fraction of nonzero features desired in validation scheme.
 % quiet: toggles display of iteration stats.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Output
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% OUTPUT.
 % B: p by q by nlam matrix of discriminant vectors.
 % Q: K by q by nlam matrix of scoring vectors.
 % best_ind: index of best solution in [B,Q].
@@ -36,7 +34,7 @@ lams = sort(lams, 'ascend');
 % Extract X and Y from train.
 X = train.X;
 Y = train.Y;
-[~, labs] = max(Y, [],2 );
+% [~, labs] = max(Y, [],2 );
 
 % Get dimensions of input matrices.
 [n, p] = size(X);

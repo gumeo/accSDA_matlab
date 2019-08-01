@@ -1,11 +1,11 @@
 function [x, k, L] = prox_ENbt(A, d, x0, lam,L, eta, maxits, tol, quiet)
-
-% Applies proximal gradient algorithm to the l1-regularized quad
+% PROX_ENBT proximal gradient method for the SOS problem.
+% Applies proximal gradient algorithm to the l1-regularized quadratic
+% program for SOS problem.
 %   f(x) + g(x) = 0.5*x'*A*x - d'*x + lam*l1(x).
-%
+% Uses backtracking line search.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% INPUT.
 % A: n by n positive definite coefficient matrix
 % d: n dim coefficient vector.
 % lam > 0: regularization parameter for l1 penalty.
@@ -15,8 +15,7 @@ function [x, k, L] = prox_ENbt(A, d, x0, lam,L, eta, maxits, tol, quiet)
 % tol: stopping tolerance for prox grad algorithm.
 % quiet: toggle display of intermediate output.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Output
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% OUTPUT.
 % x: solution at termination.
 % k: number of iterations performed.
 % L: step length/approximate Lipschitz constant.

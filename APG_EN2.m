@@ -1,11 +1,10 @@
 function [x, k] = APG_EN2(A, d, x0, lam, alpha,  maxits, tol, quiet)
-
+% APG_EN2 - accelerated proximal gradient method for SOS problem.
 % Applies accelerated proximal gradient algorithm to the l1-regularized quad
 %   f(x) + g(x) = 0.5*x'*A*x - d'*x + lam*l1(x).
 %
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% INPUT.
 % A: p by p positive definite coefficient matrix 
 %       A = 2(gamma*Om + X'X/n).
 % d: p dim coefficient vector.
@@ -15,8 +14,7 @@ function [x, k] = APG_EN2(A, d, x0, lam, alpha,  maxits, tol, quiet)
 % tol: stopping tolerance for prox grad algorithm.
 % quiet: toggle display of intermediate output.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Output
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% OUTPUT.
 % x: solution at termination.
 % k: number of iterations performed.
 

@@ -1,5 +1,5 @@
 function [B, Q] = ADMM_SDA2(t0, Y, X, Om, gam, lam, mu, q, PGsteps, PGtol, maxits, tol)
-
+% ADMM_SDA2 % ADMM_EN_SMW admm for SOS elastic net problem.
 % Applies proximal gradient algorithm to the optimal scoring formulation of
 % sparse discriminant analysis proposed by Clemmensen et al. 2011.
 %

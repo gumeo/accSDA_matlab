@@ -1,15 +1,14 @@
 function [x,y,z, k] = ADMM_EN_SMW(Ainv, V,R, d, x0, lam, mu, maxits, tol, quiet)
-
+% ADMM_EN_SMW admm for SOS elastic net problem using SMW lemma.
 % Applies Alternating Direction Method of Multipliers to the l1-regularized
 % quadratic program
 %   f(x) + g(x) = 0.5*x'*A*x - d'*x + lam*l1(x).
-%
+% Uses Sherman-Morrison-Woodbury identity to update x.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % Input
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% A: n by n positive definite coefficient matrix
 % Ainv: diagonal of A^{-1} term in SMW formula.
-% VAinv: V*A^{-1} = (A^{-1}U)' product in SMW formula.
+% V: V*A^{-1} = (A^{-1}U)' product in SMW formula.
 % R: upper triangular matrix in Chol decomp of I + U*Ainv*V.
 % d: n dim coefficient vector.
 % lam > 0: regularization parameter for l1 penalty.

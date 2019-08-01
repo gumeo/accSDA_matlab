@@ -1,11 +1,10 @@
 function [x, k,L] = APG_ENbt(A, d, x0, lam, L, eta,  maxits, tol, quiet)
-
+% APG_ENBT apg method with backtracking for SOS problem.
 % Applies accelerated proximal gradient algorithm to the l1-regularized quad
 %   f(x) + g(x) = 0.5*x'*A*x - d'*x + lam*l1(x).
-%
+% Uses back tracking line search.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% INPUT.
 % A: p by p positive definite coefficient matrix 
 %       A = 2(gamma*Om + X'X/n).
 % d: p dim coefficient vector.
@@ -14,10 +13,8 @@ function [x, k,L] = APG_ENbt(A, d, x0, lam, L, eta,  maxits, tol, quiet)
 % eta: backtracking scaling parameter.
 % maxits: number of iterations to run prox grad alg.
 % tol: stopping tolerance for prox grad algorithm.
-%
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Output
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% OUTPUT.
 % x: solution at termination.
 % k: number of iterations performed.
 % L: approximate Lipschitz constant returned by line-search.

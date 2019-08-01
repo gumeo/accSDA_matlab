@@ -1,12 +1,11 @@
 function [x,y,z, k] = ADMM_EN2(R, d, x0, lam, mu, maxits, tol, quiet)
-
+% ADMM_EN2 admm for SOS elastic net problem using SMW lemma.
 % Applies Alternating Direction Method of Multipliers to the l1-regularized
 % quadratic program
 %   f(x) + g(x) = 0.5*x'*A*x - d'*x + lam*l1(x).
 %
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% INPUT.
 % A: n by n positive definite coefficient matrix
 % R: upper triangular matrix in Chol decomp muI + A = R'*R;
 % d: n dim coefficient vector.
@@ -16,10 +15,8 @@ function [x,y,z, k] = ADMM_EN2(R, d, x0, lam, mu, maxits, tol, quiet)
 % maxits: number of iterations to run.
 % tol = [tol.abs, tol.rel]: stopping tolerances.
 % quiet = control display of intermediate statistics.
-%
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Output
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% OUTPUT.
 % (x, y,z): solution at termination.
 % k: number of iterations needed.
 

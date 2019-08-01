@@ -1,12 +1,10 @@
 function [B, Q, best_ind, scores] = SDAPval(train, val, Om, gam, lams, q, PGsteps, PGtol, maxits, tol, feat, quiet)
-
+% SDAPVAL PG with validation for SOS.
 % Applies accelerated proximal gradient algorithm with validation
 % to the optimal scoring formulation of
 % sparse discriminant analysis proposed by Clemmensen et al. 2011.
-%
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% INPUT.
 % train,val.Y: n by K matrix of indicator variables (Yij = 1 if i in classs j)
 % train,val.X: n by p data matrix.
 % Om: p by p parameter matrix Omega in generalized elastic net penalty.
@@ -18,11 +16,11 @@ function [B, Q, best_ind, scores] = SDAPval(train, val, Om, gam, lams, q, PGstep
 % tol: stopping tolerance for alternating direction algorithm.%
 % feat: maximum fraction of nonzero features desired in validation scheme.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Output
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% B: p by q by nlam matrix of discriminant vectors.
-% Q: K by q by nlam matrix of scoring vectors.
+% OUTPUT.
+% B: p by q  matrix of discriminant vectors.
+% Q: K by q  matrix of scoring vectors.
 % best_ind: index of best solution in [B,Q].
+% scores: matrix of validation scores.
 
 %% Initialization.
 

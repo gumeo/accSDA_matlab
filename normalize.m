@@ -1,5 +1,5 @@
 function [x, mu, sig, feat] = normalize(x)
-% NORMALIZE Transforms data x to have column mean 1 and variance 0.
+% NORMALIZE Transforms data x to have column mean 0 and variance 1.
 % ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % INPUT.
 % x - data matrix with observations as rows.

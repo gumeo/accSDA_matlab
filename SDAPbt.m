@@ -1,12 +1,10 @@
 function [B,Q, subits, totalits] = SDAPbt(Xt, Yt, Om, gam, lam, L, eta, q, PGsteps, PGtol, maxits, tol, quiet)
-% SDAPBT PG with backtracking linear search for SOS.
+% SDAPBT PG with backtracking line search for SOS.
 % Applies proximal gradient algorithm (with backtracking)
 % to the optimal scoring formulation of
 % sparse discriminant analysis proposed by Clemmensen et al. 2011.
-%
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% INPUT.
 % Xt: n by p data matrix.
 % Yt: n by K matrix of indicator variables (Yij = 1 if i in classs j)
 % Om: p by p parameter matrix Omega in generalized elastic net penalty.
@@ -21,8 +19,7 @@ function [B,Q, subits, totalits] = SDAPbt(Xt, Yt, Om, gam, lam, L, eta, q, PGste
 % tol: stopping tolerance for alternating direction algorithm.
 % quiet: toggle display of intermediate output.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Output
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% OUTPUT.
 % B: p by q  matrix of discriminant vectors.
 % Q: K by q  matrix of scoring vectors.
 % subits, totalits: number of inner and outer loop iterations.

@@ -6,7 +6,6 @@ function ASDAres = ASDA(X, Y, Om, gam, lam, cv, method, q, insteps, outsteps, in
 % sparse discriminant analysis proposed by Clemmensen et al. 2011.
 % +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % INPUT.
-% +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % X: n by p data matrix.
 % Y: n by K matrix of indicator variables (Yij = 1 if i in classs j)
 % Om: p by p parameter matrix Omega in generalized elastic net penalty.
@@ -35,15 +34,13 @@ function ASDAres = ASDA(X, Y, Om, gam, lam, cv, method, q, insteps, outsteps, in
 %   .eta > 0: scaling factor in backtracking line search.
 %   .mu > 0: augmented Lagrangian penalty parameter for ADMM.
 %   .feat - in [0,1]: if cv true, the desired max cardinality of dvs.
-
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % OUTPUT.
-% +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % ASDAres - structure containing:
 % B: p by q  matrix of discriminant vectors.
 % Q: K by q  matrix of scoring vectors.
 % bestind: index of best regularization parameter (if using CV).
-% 
+ 
 
 % +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % PRELIMINARY ERROR CHECKING AND INITIALIZATION.

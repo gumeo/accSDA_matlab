@@ -1,12 +1,11 @@
 function [B, Q, lbest, lambest,scores] = SDADcv(train, folds, Om, gam, lams, mu, q, PGsteps, PGtol, maxits, tol, feat, quiet)
-
+% SDADcv admm with cross validation for the SOS problem.
 % Applies alternating direction method of multipliers with cross validation
 % to the optimal scoring formulation of
 % sparse discriminant analysis proposed by Clemmensen et al. 2011.
 %
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% INPUT.
 % train.X, train.Y: training data.
 % folds: number of folds to use in K-fold cross-validation.
 % Om: p by p parameter matrix Omega in generalized elastic net penalty.
@@ -20,8 +19,7 @@ function [B, Q, lbest, lambest,scores] = SDADcv(train, folds, Om, gam, lams, mu,
 % feat: maximum fraction of nonzero features desired in validation scheme.
 % quiet: if 1 does not display intermediate stats.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Output
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% OUTPUT.
 % B: p by q by nlam matrix of discriminant vectors.
 % Q: K by q by nlam matrix of scoring vectors.
 % best_ind: index of best solution in [B,Q].
@@ -84,6 +82,9 @@ scores = q*p*ones(folds, nlam);
 % Misclassification rate for each classifier.
 mc = zeros(folds, nlam);
 
+% Save Om.
+Omold = Om;
+
 for f = 1 : folds
 
     %% Initialization.
@@ -91,6 +92,7 @@ for f = 1 : folds
     Xt = X(tinds, :);
     Yt = Y(tinds, :);
     [Xt, mut, sigt, ft] = normalize(Xt);
+    Om = Omold(ft,ft);
 
     % Extract training data.
     Xv = X(vinds, :);
@@ -315,7 +317,7 @@ Yt = train.Y;
 Xt = normalize(Xt);
 
 % Solve for B & Q.
-[B, Q] = SDAD(Xt, Yt, Om, gam, lambest, mu, q, PGsteps, PGtol, maxits, tol, 1);
+[B, Q] = SDAD(Xt, Yt, Omold, gam, lambest, mu, q, PGsteps, PGtol, maxits, tol, 1);
 
 
 

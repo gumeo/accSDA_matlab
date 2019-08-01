@@ -1,12 +1,10 @@
 function [B, Q, lbest, lambest, scores] = SDAPcv(train, folds, Om, gam, lams, q, PGsteps, PGtol, maxits, tol, feat, quiet)
-
+% SDAPBTCV PG with cross validation for SOS.
 % Applies proximal gradient algorithm with cross validation
 % to the optimal scoring formulation of
 % sparse discriminant analysis proposed by Clemmensen et al. 2011.
-%
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Input
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+% INPUT.
 % train.X: n by p data matrix.
 % train.Y: n by K matrix of indicator variables (Yij = 1 if i in classs j)
 % folds: number of folds to use in K-fold cross-validation.
@@ -20,11 +18,12 @@ function [B, Q, lbest, lambest, scores] = SDAPcv(train, folds, Om, gam, lams, q,
 % feat: maximum fraction of nonzero features desired in validation scheme.
 % quiet: toggles display of iteration stats.
 %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% Output
-%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-% B: p by q by nlam matrix of discriminant vectors.
-% Q: K by q by nlam matrix of scoring vectors.
-% best_ind: index of best solution in [B,Q].
+% OUTPUT.
+% B: p by q matrix of discriminant vectors.
+% Q: K by q  matrix of scoring vectors.
+% lbest: index of best regularization paramter.
+% lambest: best lambda parameter.
+% scores: matrix of scores.
 
 
 %% Initialize training sets, etc.
@@ -87,6 +86,8 @@ scores = q*p*ones(folds, nlam);
 % Misclassification rate for each classifier.
 mc = zeros(folds, nlam);
 
+% Save Om.
+Omold = Om;
 
 
 for f = 1 : folds
@@ -104,6 +105,7 @@ for f = 1 : folds
     % Extract validation data.
     Xv = X(vinds, :);
     Xv = normalize_test(Xv, mut, sigt,ft);
+    Om = Omold(ft,ft);
 %     fprintf('size(Xv) %d \n', size(Xv))
 %     Yv = Y(vinds, :);
     % Get dimensions of training matrices.
@@ -353,6 +355,6 @@ Yt = Y(1:(n-pad), :);
 % lbest
 % size(Yt)
 
-[B,Q] = SDAP(Xt, Yt, Om, gam, lams(lbest), q, PGsteps, PGtol, maxits, tol, true);
+[B,Q] = SDAP(Xt, Yt, Omold, gam, lams(lbest), q, PGsteps, PGtol, maxits, tol, true);
 
 % fprintf('Found DVs\n')
