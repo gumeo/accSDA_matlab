@@ -103,6 +103,7 @@ for f = 1 : folds
     % Extract X and Y from train.
     Xt = X(tinds, :);
     [Xt, mut, sigt,ft] = normalize(Xt);
+    Omn = Om(ft, ft);
     Yt = Y(tinds, :);
 
     % Extract training data.
@@ -120,10 +121,10 @@ for f = 1 : folds
     %display('form EN coefficient matrix')
     %gamOm = gam*Om;
 
-    if norm(diag(diag(Om)) - Om, 'fro') < 1e-15 % Omega is diagonal.
+    if norm(diag(diag(Omn)) - Omn, 'fro') < 1e-15 % Omega is diagonal.
         A.flag = 1;
         % Store components of A.
-        A.gom = gam*diag(Om);
+        A.gom = gam*diag(Omn);
         A.X = Xt;
         A.n = nt;
 
@@ -134,7 +135,7 @@ for f = 1 : folds
         %     norm(A.A)
     else
         A.flag = 0;
-        A.A = 2*(Xt'*Xt/nt + gam*Om); % Elastic net coefficient matrix.
+        A.A = 2*(Xt'*Xt/nt + gam*Omn); % Elastic net coefficient matrix.
         %alpha = 1/norm(A.A, 'fro');
     end
     
@@ -187,13 +188,16 @@ for f = 1 : folds
 
             % Initialize beta.
             if (ll==1) % First lam.                
-                if norm(diag(diag(Om)) - Om, 'fro') < 1e-15 % Use diagonal initializer.
+                if norm(diag(diag(Omn)) - Omn, 'fro') < 1e-15 % Use diagonal initializer.
                     % Extract reciprocal of diagonal of Omega.
-                    ominv = 1./diag(Om);
+                    ominv = 1./diag(Omn);
                     
-                    % Compute rhs of f minimizer system.
+                    % Compute rhs of f minimizer system.                                        
                     rhs0 = Xt'*(Yt*(theta/nt));
+                    size(Xt), size(ominv), size(rhs0)
                     rhs = Xt*((ominv/n).*rhs0);
+                    
+                    
                     
                     % Compute partial solution.
 %                     size(Xt)
@@ -286,6 +290,10 @@ for f = 1 : folds
         % Validation scores.
         %++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         %nnz(B)
+        size(stats.l0)
+        size(q)
+        size(p)
+        size(feat)
         if  (1<= stats.l0) && (stats.l0 <= q*p*feat) 
         
 %         if  (1<= stats.l0 <= q*p*feat)% if fraction nonzero features less than feat.

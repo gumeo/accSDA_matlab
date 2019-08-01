@@ -38,7 +38,7 @@ l0=sum(abs(w)>1e-3); %l0 is the number of non-zero entries
 l1=sum(abs(w));
 
 stats.mc=misclassed;
-stats.l0=l0;
+stats.l0=sum(l0);
 stats.l1=l1;
 
 

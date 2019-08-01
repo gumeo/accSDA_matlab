@@ -12,18 +12,18 @@
 % gam = 0.001;
 
 % Test on ECG.
-load('data\ECG.mat')
+load('Data\Pen.mat')
 
 
 %%
-Om = eye(136);
+Om = eye(3541);
 gam = 1e-3;
 lam = [1e-4; 1e-3; 1e-2; 1e-1];
 
 cv = true;
 
-method = "PG";
-q = 1;
+method = "APG";
+q = 2;
 insteps = 1500;
 outsteps = 10;
 intol = 1e-7;
@@ -37,7 +37,7 @@ opts.feat = 0.25;
 opts.folds = 5;
 
 %% Calculate DVs. 
-res = ASDA(Xt,Yt, Om, gam, lam, cv, method,q, insteps, outsteps, intol, outtol, quiet,opts);
+res = ASDA(X,Y, Om, gam, lam, cv, method,q, insteps, outsteps, intol, outtol, quiet,opts);
 
 %%
 plot(res.B);
@@ -49,5 +49,10 @@ if cv == true
 end
 
 
-%% 
-scatterplot(Xt*B)
+%% Validation scores. 
+% Centroid matrix of training data.
+C = diag(1./diag(Y'*Y))*Y'*X;
+
+stats = predict(res.B, test, C')
+
+

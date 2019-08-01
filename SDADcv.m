@@ -294,9 +294,7 @@ end % folds.
 
 %%  Find best solution.
 
-if quiet == false
-    fprintf('Finished training lambda.\n')
-end
+
 % average CV scores.
 avg_score = mean(scores);
 
