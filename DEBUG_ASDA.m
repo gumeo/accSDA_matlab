@@ -12,7 +12,7 @@
 % gam = 0.001;
 
 % Test on ECG.
-load('ECG.mat')
+load('data\ECG.mat')
 
 
 %%

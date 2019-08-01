@@ -12,7 +12,42 @@
 % gam = 0.001;
 
 % Test on ECG.
-load('ECG.mat')
+load('data\Pen.mat')
+
+%% Process ECG.
+
+[n, p] = size(train);
+X = train(:,2:p);
+Xtest = test(:,2:p);
+
+[nt,~] size(test);
+
+%% Make Y.
+Y = zeros(n,2);
+for i = 1:n
+    Y(i, train(i,1)) = 1;
+end
+
+Ytest = zeros(nt,2);
+for i = 1:nt
+    Yt
+
+%% 
+nt = size(Xtest,1);
+
+test = [zeros(nt,1), Xtest];
+for i = 1:nt
+    for j = 1:K
+        if Ytest(i,j) == 1
+            test(i, 1) = j;
+        end
+    end
+end
+
+
+
+
+    
 
 
 %%
@@ -22,22 +57,32 @@ lam = [1e-4; 1e-3; 1e-2; 1e-1];
 
 cv = true;
 
-method = "ADMM";
-opts.q = 1;
-opts.insteps = 1500;
-opts.outsteps = 10;
-opts.intol = 1e-7;
-opts.outtol = 1e-4;
-opts.quiet = false;
+method = "PG";
+q = 1;
+insteps = 1500;
+outsteps = 10;
+intol = 1e-7;
+outtol = 1e-4;
+quiet = false;
 opts.bt = true;
 opts.L = 0.25;
 opts.eta = 1.25;
 opts.mu = 4;
-opts.feat = "0.8";
+opts.feat = 0.25;
+opts.folds = 5;
 
 %% Calculate DVs. 
-[B,Q] = ASDA(Xt,Yt, Om, gam, lam, cv, method, opts);
-plot(B);
+res = ASDA(Xt,Yt, Om, gam, lam, cv, method,q, insteps, outsteps, intol, outtol, quiet,opts);
+
+%%
+plot(res.B);
+res.Q;
+if cv == true
+    res.bestind
+    res.bestlam
+    [lam'; res.cvscores]
+end
+
 
 %% 
 scatterplot(Xt*B)
