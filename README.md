@@ -49,12 +49,51 @@ If `cv = true` then the additional values are returned:
 * `ASDAres.cvscores`, which is the matrix of cross validation scores for all folds and possible choices of parameter λ in `lam`.
 You can test accuracy of the calculated discriminant vectors for nearest centroid classification using the provided Matlab function `predict`.
 
-If using the *(accelerated) proximal gradient method*, i.e., `method = "PG"` or `method = "APG",` then you must provide the additional argument `opts.bt` to indicate whether to use backtracking line search (`opts.bt = true`) or constant step-size (`opts.bt = false`) in the (accelerated) proximal gradient method). If `opts.bt` is true then you need to provide the following additional arguments:
+If using the **(accelerated) proximal gradient method**, i.e., `method = "PG"` or `method = "APG",` then you must provide the additional argument `opts.bt` to indicate whether to use backtracking line search (`opts.bt = true`) or constant step-size (`opts.bt = false`) in the (accelerated) proximal gradient method). If `opts.bt` is true then you need to provide the following additional arguments:
 * `opts.L` estimate of the Lipschitz constant to initialize the backtracking line search.
 * `opts.eta` a scalar > 1 giving the scaling factor for the backtracking line search.
 
-If using the *alternating direction method of multiplier*, i.e., `method = "ADMM"`, you must provide the additional argument `opts.mu`, which is a positive scalar giving the weight of the augmented Lagrangian penalty in the ADMM scheme.
+If using the **alternating direction method of multipliers**, i.e., `method = "ADMM"`, you must provide the additional argument `opts.mu`, which is a positive scalar giving the weight of the augmented Lagrangian penalty in the ADMM scheme.
 
-If using cross validation (`cv = true`) to train λ, you must provide the addtional arguments to the CV scheme:
+If using cross validation (`cv = true`) to train λ, you must provide the following arguments to the CV scheme:
 * `opts.fold` a positive integer, less than n, indicating the number of folds to use in the CV scheme, and
 * `opts.feat` a scalar in the interval (0,1) indicating the desired proportion of nonzero predictor variables in calculated discriminant vectors. We use misclassification as CV score for all calculated vectors that contain at most this proportion of nonzero features, and use the number of nonzero features otherwise.
+
+# An example: Coffee spectrograms.
+
+The following is a simple example using the Coffee data set from the [UCR Time Series Classification Archive](https://www.cs.ucr.edu/%7Eeamonn/time_series_data_2018/).
+The training set consists of *n=28* spectrographic observations of either *arabica* or *robusta* variants of instant coffee, each containing *p=286* feature variables. We include a standardized version of this data set in the fold `Data` in the repository as the file `Coffee.mat`
+Here, we use the accelerated proximal gradient method with backtracking and with cross valiation; we'll discuss the usage of other methods later.
+
+```Matlab
+
+% Load data set.
+load(`Data\Coffee.mat`)
+
+% Define required parameters.
+p = 286; % Predictor variable sizes.
+Om = eye(p) % Use identity matrix for Om.
+gam = 1e-3;
+q = 1; % One fewer than number of classes.
+quiet = true; % Suppress output.
+
+% Optimization parameters.
+insteps = 1000;
+intol = 1e-4;
+outsteps = 25;
+outtol = 1e-4;
+
+% Choose method and additional required arguments.
+method = "APG" % Use accelerated proximal gradient.
+opts.bt = true; % Use backtracking.
+opts.L = 0.25; % initial Lipschitz constant for BT.
+opts.eta = 1.25; % scaling factor for BT.
+
+% Use cross validation, and provide required arguments.
+cv = true;
+opts.folds = 7; % Use 7-fold CV as in paper.
+opts.feat = 0.15; % Want classifiers using 15% of features.
+
+% Call ASDA.
+ASDAres = ASDA(X, Y, Om, gam, lam, cv, method, q, insteps, outsteps, intol, outtol, quiet, opts)
+```
