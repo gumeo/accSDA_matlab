@@ -129,6 +129,36 @@ This yields the following table containing proportion of misclassified testing o
 Statistic | Value
 -----|--------
 Misclassification Rate | 0
-Cardinality | 33
+Cardinality | 33 (out of 286 features)
 
 (Again, these values may change depending on which value of λ is chosen during cross validation.)
+
+# Another Example: Olive Oil spectrograms.
+
+The following example illustrates the use of the alternating direction method of multipliers to classify $n=30$ samples of olive oil from olives grown in one of four different geographic regions using spectrographic measurements (*p=570*). This data set is also available from the [UCR Time Series Classification Archive](https://www.cs.ucr.edu/%7Eeamonn/time_series_data_2018/) and the `Data` folder in our repository (in the file `OliveOil.mat`).
+
+We set all input parameters and call ASDA using the following Matlab commands.
+
+As before, we plot the discriminant vectors using the command
+```Matlab
+plot(ASDAres.B)
+```
+
+![Image of discriminant vectors for Olive Oil data](./Examples/oliveoildvs.png)
+
+We next perform nearest centroid classification in the span of the discriminant vectors.
+```Matlab
+% First calculate centroid matrix of training data.
+C = diag(1./diag(Y'*Y))*Y'*X;
+
+
+% Call predict to calculate accuracy on testing data.
+% Note: predict requires matrix with class centroids as columns.
+stats = predict(ASDAres.B, test, C')
+```
+This yields the following table of performance metrics:
+
+Statistic | Value
+-----|--------
+Misclassification Rate | 0.0667 (or 2/30)
+Cardinality | 67 (out of 1710 total features)
