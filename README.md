@@ -15,7 +15,7 @@ Then you might be trying to solve an *p>>n* classification task.
 This package includes functions that allow you to train such a classifier in a sparse manner. In this context *sparse* means that only the best variables are selected for the final classifier. In this sense you can also interpret the output, i.e., use it to identify important variables for your classification task. The current functions also handle cross-validation for tuning the sparsity, look at the documentation for further description/examples.
 
 # Installation
-You can use the package immediately after adding the folder containing all function files to your Matlab path.
+You can use the package immediately after adding the folder containing all function files (found in the folder `accSDA_matlab`) to your Matlab path.
 
 # Usage
 
