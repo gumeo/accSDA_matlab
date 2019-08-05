@@ -62,7 +62,7 @@ for k = 0:maxits
     % Update y using soft-thresholding.
     yold = y;
     tmp = x + z/mu;
-    y = sign(tmp).*max(abs(tmp) - lam*ones(p,1), zeros(p,1));
+    y = sign(tmp).*max(abs(tmp) - lam/mu*ones(p,1), zeros(p,1));
     
     
     %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
