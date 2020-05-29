@@ -43,6 +43,7 @@ The function `ASDA` performs block coordinate descent to solve the sparse optima
 The function `ASDA` returns a structured list `ASDAres` containing
 * `ASDAres.B` a p x q matrix with columns containing the discriminant vectors calculated by the block coordinate descent method.
 * `ASDAres.Q` a k x q matrix with columns containing the optimal scoring vectors.
+
 If `cv = true` then the additional values are returned:
 * `ASDAres.bestind`, which is the index of the value of `lam` chosen by cross validation,
 * `ASDAres.bestlam`, which is the value of `lam` chosen by cross validation,
@@ -62,10 +63,10 @@ If using cross validation (`cv = true`) to train λ, you must provide the follow
 # An example: Coffee spectrograms.
 
 The following is a simple example using the Coffee data set from the [UCR Time Series Classification Archive](https://www.cs.ucr.edu/%7Eeamonn/time_series_data_2018/).
-The training set consists of *n=28* spectrographic observations of either *arabica* or *robusta* variants of instant coffee, each containing *p=286* feature variables. We include a standardized version of this data set in the fold `Data` in the repository as the file `Coffee.mat`.
+The training set consists of *n=28* spectrographic observations of either *arabica* or *robusta* variants of instant coffee, each containing *p=286* feature variables. We include a standardized version of this data set in the folder `Data` in the repository as the file `Coffee.mat`.
 
 
-We first define input arguments. Here, we use the accelerated proximal gradient method with backtracking and with cross validation; we'll discuss the usage of other methods later.
+We first define input arguments. Here, we use the accelerated proximal gradient method with backtracking and cross validation; we'll discuss the usage of other methods later.
 
 ```Matlab
 
@@ -93,8 +94,8 @@ opts.eta = 1.25; % scaling factor for BT.
 
 % Use cross validation, and provide required arguments.
 cv = true;
-opts.folds = 7; % Use 7-fold CV as in paper.
-opts.feat = 0.15; % Want classifiers using 15% of features.
+opts.folds = 7; % Use 7-fold cross-validation.
+opts.feat = 0.15; % Want classifiers using at most 15% of features.
 ```
 
 After defining all input arguments, we are ready to solve for the discriminant vectors.
@@ -135,9 +136,42 @@ Cardinality | 33 (out of 286 features)
 
 # Another Example: Olive Oil spectrograms.
 
-The following example illustrates the use of the alternating direction method of multipliers to classify $n=30$ samples of olive oil from olives grown in one of four different geographic regions using spectrographic measurements (*p=570*). This data set is also available from the [UCR Time Series Classification Archive](https://www.cs.ucr.edu/%7Eeamonn/time_series_data_2018/) and the `Data` folder in our repository (in the file `OliveOil.mat`).
+The following example illustrates the use of the alternating direction method of multipliers to classify $n=30$ samples of olive oil from olives grown in one of four different geographic regions using spectrographic measurements (*p=570*). This data set is also available from the [UCR Time Series Classification Archive](https://www.cs.ucr.edu/%7Eeamonn/time_series_data_2018/) and the `Data` folder in our repository (stored as the file `OliveOil.mat`).
 
-We set all input parameters and call ASDA using the following Matlab commands.
+We set all input parameters and call ASDA using the following Matlab commands; note that we use ADMM and choose *λ = 0.01* without cross validation.
+
+```Matlab
+% Load data set.
+clear; clc;
+load('Data\OliveOil.mat')
+
+
+%% 
+% Define required parameters.
+p = 570; % Predictor variable sizes.
+Om = eye(p); % Use identity matrix for Om.
+gam = 1e-3; 
+q = 3; % One fewer than number of classes.
+quiet = true; % Suppress output.
+
+% Optimization parameters.
+insteps = 1000;
+intol = 1e-4;
+outsteps = 25;
+outtol = 1e-4;
+
+% Choose method and additional required arguments.
+method = "ADMM"; % Use alternating direction method of multiplier.
+opts.mu = 5; % Set augmented Lagrangian parameter.
+
+% Don't use cross validation. Set lambda.
+cv = false;
+lam = 1e-2; % Choose lambda.
+
+%% Call ASDA.
+ASDAres = ASDA(X, Y, Om, gam, lam, cv, method, q, insteps, outsteps, intol, outtol, quiet, opts);
+
+```
 
 As before, we plot the discriminant vectors using the command
 ```Matlab
